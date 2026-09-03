@@ -1,425 +1,536 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theo dõi Đặt Hàng & Giao Hàng NCC</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { --main-bg: #f8fafc; }
-        body { background-color: var(--main-bg); font-family: system-ui, -apple-system, sans-serif; }
-        .modal-bg { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 50; align-items: center; justify-content: center; padding: 20px; }
-        .modal { background: #fff; border-radius: 12px; width: 600px; max-width: 100%; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto; }
-        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 60; display: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Theo dõi Đặt hàng & Giao hàng - Hosiden OSCO</title>
+  <style>
+    :root{
+      --bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#64748b;--line:#e2e8f0;
+      --primary:#2563eb;--primary2:#1d4ed8;--danger:#dc2626;--ok:#15803d;--warn:#b45309;
+      --shadow:0 10px 25px rgba(15,23,42,.08)
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1450px;margin:auto;padding:22px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .brand h1{font-size:22px;margin:0 0 4px}.brand p{margin:0;color:var(--muted);font-size:13px}
+    .userbox{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .pill{padding:7px 11px;border-radius:999px;background:#e8eefc;color:#1e40af;font-size:12px;font-weight:700}
+    button,.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--primary);color:white}.primary:hover{background:var(--primary2)}
+    .secondary{background:#e2e8f0;color:#334155}.danger{background:#fee2e2;color:#991b1b}
+    .small{padding:6px 9px;font-size:12px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+    .login-card{max-width:430px;margin:8vh auto}
+    .card h2,.card h3{margin-top:0}
+    label{display:block;font-size:12px;font-weight:800;margin:0 0 6px;color:#475569}
+    input,select,textarea{width:100%;padding:10px 11px;border:1px solid #cbd5e1;border-radius:9px;background:white;color:#0f172a}
+    textarea{min-height:80px;resize:vertical}
+    .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .full{grid-column:1/-1}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    .toolbar input,.toolbar select{width:auto;min-width:170px}
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+    th,td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+    th{position:sticky;top:0;background:#f8fafc;z-index:1;color:#475569;font-size:12px}
+    .table-wrap{overflow:auto;max-height:65vh;border:1px solid var(--line);border-radius:10px}
+    .status{display:inline-flex;padding:5px 8px;border-radius:999px;font-weight:800;font-size:11px;white-space:nowrap}
+    .s-none{background:#f1f5f9;color:#475569}.s-part{background:#ffedd5;color:#9a3412}.s-done{background:#dcfce7;color:#166534}
+    .muted{color:var(--muted)} .hidden{display:none!important}
+    .stat{grid-column:span 3}.stat .n{font-size:26px;font-weight:900}.stat .t{font-size:12px;color:var(--muted)}
+    .main{grid-column:span 12}.side{grid-column:span 4}.wide{grid-column:span 8}
+    .error{background:#fee2e2;color:#991b1b;padding:10px;border-radius:8px;font-size:13px;margin-top:10px}
+    .success{background:#dcfce7;color:#166534;padding:10px;border-radius:8px;font-size:13px;margin-top:10px}
+    dialog{border:0;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:min(720px,94vw)}
+    dialog::backdrop{background:rgba(15,23,42,.45)}
+    .dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+    .delivery-item{border:1px solid var(--line);padding:10px;border-radius:9px;margin:8px 0;background:#f8fafc}
+    @media(max-width:900px){.stat{grid-column:span 6}.side,.wide{grid-column:span 12}.form-grid{grid-template-columns:1fr}}
+  </style>
 </head>
-<body class="min-h-screen flex flex-col text-slate-800">
+<body>
+<div class="wrap">
+  <section id="loginView" class="card login-card">
+    <h2>Đăng nhập</h2>
+    <p class="muted">Hệ thống theo dõi đặt hàng & giao hàng với nhà cung cấp.</p>
+    <form id="loginForm">
+      <div style="margin-bottom:12px">
+        <label>Email (Admin) hoặc Tên đăng nhập (Nhà cung cấp)</label><input id="loginEmail" type="text" required autocomplete="username">
+      </div>
+      <div style="margin-bottom:12px">
+        <label>Mật khẩu</label><input id="loginPassword" type="password" required autocomplete="current-password">
+      </div>
+      <button class="primary" type="submit" style="width:100%">Đăng nhập</button>
+      <div id="loginMsg"></div>
+    </form>
+  </section>
 
-    <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="fixed inset-0 bg-slate-900 flex items-center justify-center p-4 z-50">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
-            <h1 class="font-bold text-2xl text-center mb-2 text-blue-600">PO TRACKER</h1>
-            <p class="text-sm text-center text-slate-500 mb-6">Theo dõi đặt hàng & giao hàng</p>
-            <div id="login-error" class="text-red-500 text-sm mb-4 hidden text-center font-medium bg-red-50 p-2 rounded"></div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">Tài khoản</label>
-                    <input id="login-user" type="text" placeholder="admin hoặc ncc" class="w-full border rounded-lg px-3 py-2 outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">Mật khẩu</label>
-                    <input id="login-pass" type="password" placeholder="123456" class="w-full border rounded-lg px-3 py-2 outline-none focus:border-blue-500">
-                </div>
-                <button onclick="doLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition-colors">Đăng nhập</button>
-            </div>
+  <section id="appView" class="hidden">
+    <div class="topbar">
+      <div class="brand"><h1>Đặt hàng & Giao hàng</h1><p>Firebase Realtime Database • Hosiden OSCO</p></div>
+      <div class="userbox">
+        <span id="userEmail" class="muted"></span><span id="userRole" class="pill"></span>
+        <button id="logoutBtn" class="secondary small">Đăng xuất</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card stat"><div class="n" id="stTotal">0</div><div class="t">Tổng đơn hàng</div></div>
+      <div class="card stat"><div class="n" id="stNone">0</div><div class="t">Chưa giao</div></div>
+      <div class="card stat"><div class="n" id="stPart">0</div><div class="t">Đang giao</div></div>
+      <div class="card stat"><div class="n" id="stDone">0</div><div class="t">Đã giao hoàn thành</div></div>
+
+      <div id="adminPanel" class="card side hidden">
+        <h3>Tạo đơn đặt hàng</h3>
+        <form id="orderForm">
+          <div class="form-grid">
+            <div class="full"><label>Tên sản phẩm *</label><input id="productName" required></div>
+            <div><label>Mã sản phẩm</label><input id="productCode"></div>
+            <div><label>Số lượng *</label><input id="orderQty" type="number" min="1" step="1" required></div>
+            <div class="full"><label>Dùng cho model *</label><select id="modelSelect" required></select></div>
+            <div><label>Mã số báo giá</label><input id="quotationNo"></div>
+            <div><label>Mã PO</label><input id="poNo"></div>
+            <div class="full"><label>Ghi chú</label><textarea id="note"></textarea></div>
+          </div>
+          <button class="primary" type="submit" style="width:100%;margin-top:12px">Tạo đơn</button>
+          <div id="orderMsg"></div>
+        </form>
+
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+        <h3>Tạo tài khoản</h3>
+        <form id="accountForm">
+          <div style="margin-bottom:10px">
+            <label>Loại tài khoản</label>
+            <select id="accRole">
+              <option value="supplier">Nhà cung cấp (không cần email)</option>
+              <option value="admin">Admin (cần email thật)</option>
+            </select>
+          </div>
+          <div id="accEmailWrap" style="margin-bottom:10px">
+            <label id="accIdentifierLabel">Tên đăng nhập</label>
+            <input id="accIdentifier" required placeholder="vd: nhacungcapA">
+          </div>
+          <div style="margin-bottom:10px">
+            <label>Mật khẩu (tối thiểu 6 ký tự)</label>
+            <input id="accPassword" type="text" required minlength="6">
+          </div>
+          <button class="primary" type="submit" style="width:100%">Tạo tài khoản</button>
+          <div id="accountMsg"></div>
+        </form>
+
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+        <h3>Danh sách Model</h3>
+        <form id="modelForm" style="display:flex;gap:8px">
+          <input id="newModel" placeholder="Ví dụ: Pegasus" required>
+          <button class="primary small">Thêm</button>
+        </form>
+        <div id="modelList" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card wide" id="ordersPanel">
+        <div class="toolbar">
+          <input id="searchBox" placeholder="Tìm sản phẩm / mã / PO / báo giá">
+          <select id="statusFilter">
+            <option value="">Tất cả trạng thái</option>
+            <option value="none">Chưa giao</option>
+            <option value="part">Đang giao</option>
+            <option value="done">Đã giao hoàn thành</option>
+          </select>
+          <select id="modelFilter"><option value="">Tất cả model</option></select>
+          <button id="exportBtn" class="secondary small">Xuất CSV</button>
         </div>
-    </div>
-
-    <!-- MAIN APP -->
-    <div id="app-screen" class="hidden flex-1 flex flex-col">
-        <header class="bg-blue-700 text-white px-6 py-4 flex justify-between items-center shadow">
-            <div class="font-bold text-lg flex items-center gap-2">
-                <span>📦 QUẢN LÝ ĐƠN HÀNG NCC</span>
-                <span id="role-badge" class="text-[10px] bg-blue-900 px-2 py-1 rounded-full uppercase ml-2 border border-blue-500"></span>
-            </div>
-            <button onclick="doLogout()" class="text-sm bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded font-medium transition-colors">Đăng xuất</button>
-        </header>
-
-        <main class="p-6 max-w-full mx-auto w-full flex-1">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex justify-between items-center">
-                <div class="flex gap-2">
-                    <input type="text" id="search-input" oninput="renderOrders()" placeholder="🔍 Tìm SP, PO, Model..." class="border rounded-lg px-4 py-2 w-72 text-sm outline-none focus:border-blue-500">
-                </div>
-                <!-- Nút này chỉ Admin mới thấy -->
-                <button id="btn-create-order" onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm hidden">+ Tạo Đơn Mới</button>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
-                        <thead>
-                            <tr class="bg-slate-50 text-slate-700 uppercase text-xs border-b">
-                                <th class="p-3">Sản phẩm & Model</th>
-                                <th class="p-3">Chứng từ (PO / BG)</th>
-                                <th class="p-3 text-center">Tiến độ giao hàng</th>
-                                <th class="p-3 text-center">Trạng thái</th>
-                                <th class="p-3">Ghi chú</th>
-                                <th class="p-3 text-center">Thao tác NCC</th>
-                            </tr>
-                        </thead>
-                        <tbody id="orders-tbody" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- MODAL 1: TẠO ĐƠN HÀNG (Dành cho Admin) -->
-    <div id="modal-create" class="modal-bg">
-        <div class="modal">
-            <h3 class="font-bold text-lg border-b pb-3 mb-4 text-blue-700">Tạo Đơn Đặt Hàng Mới</h3>
-            <div class="space-y-4">
-                <div><label class="block text-xs font-bold mb-1">Tên Sản Phẩm *</label><input id="c-name" type="text" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-xs font-bold mb-1">Mã Sản Phẩm</label><input id="c-code" type="text" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></div>
-                    <div><label class="block text-xs font-bold mb-1">Số Lượng Đặt *</label><input id="c-qty" type="number" min="1" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></div>
-                </div>
-                <div><label class="block text-xs font-bold mb-1">Dùng cho Model *</label><select id="c-model" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></select></div>
-            </div>
-            <div class="flex justify-end gap-2 mt-6 pt-4 border-t">
-                <button onclick="closeModal('modal-create')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium">Hủy</button>
-                <button onclick="saveOrder()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm">Lưu Đơn</button>
-            </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Báo giá</th><th>Sản phẩm</th><th>Mã SP</th><th>SL đặt</th><th>Model</th>
+              <th>PO</th><th>Đã giao</th><th>Còn lại</th><th>Trạng thái</th><th>Giao hàng</th><th>Ghi chú</th><th>Thao tác</th>
+            </tr></thead>
+            <tbody id="orderRows"></tbody>
+          </table>
         </div>
+      </div>
     </div>
+  </section>
+</div>
 
-    <!-- MODAL 2: NCC CẬP NHẬT THÔNG TIN -->
-    <div id="modal-supplier-edit" class="modal-bg">
-        <div class="modal">
-            <h3 class="font-bold text-lg border-b pb-3 mb-4 text-amber-600">NCC Cập Nhật Chứng Từ</h3>
-            <input type="hidden" id="e-id">
-            <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-xs font-bold mb-1">Mã Báo Giá</label><input id="e-quotation" type="text" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></div>
-                    <div><label class="block text-xs font-bold mb-1">Mã Số PO</label><input id="e-po" type="text" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></div>
-                </div>
-                <div><label class="block text-xs font-bold mb-1">Cập nhật Mã SP (Nếu cần đổi)</label><input id="e-code" type="text" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></div>
-                <div><label class="block text-xs font-bold mb-1">Ghi chú</label><textarea id="e-notes" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></textarea></div>
-            </div>
-            <div class="flex justify-end gap-2 mt-6 pt-4 border-t">
-                <button onclick="closeModal('modal-supplier-edit')" class="px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium">Hủy</button>
-                <button onclick="saveSupplierInfo()" class="px-4 py-2 bg-amber-500 text-white font-bold rounded-lg text-sm">Cập nhật</button>
-            </div>
+<dialog id="editDialog">
+  <form method="dialog" id="editForm">
+    <h3>Cập nhật đơn hàng</h3>
+    <input type="hidden" id="editId">
+    <div class="form-grid">
+      <div><label>Mã số báo giá</label><input id="editQuotationNo"></div>
+      <div><label>Mã sản phẩm</label><input id="editProductCode"></div>
+      <div><label>Mã PO</label><input id="editPoNo"></div>
+      <div class="full"><label>Ghi chú</label><textarea id="editNote"></textarea></div>
+      <div id="adminEditFields" class="full hidden">
+        <div class="form-grid">
+          <div class="full"><label>Tên sản phẩm</label><input id="editProductName"></div>
+          <div><label>Số lượng đặt</label><input id="editOrderQty" type="number" min="1" step="1"></div>
+          <div><label>Model</label><select id="editModel"></select></div>
         </div>
+      </div>
     </div>
-
-    <!-- MODAL 3: GIAO HÀNG & LỊCH SỬ -->
-    <div id="modal-delivery" class="modal-bg">
-        <div class="modal w-[700px]">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="font-bold text-lg text-emerald-600">Quản Lý Giao Hàng</h3>
-                <div class="text-sm font-bold bg-slate-100 px-3 py-1 rounded" id="d-summary"></div>
-            </div>
-            <input type="hidden" id="d-id">
-            <input type="hidden" id="d-max-qty">
-            
-            <!-- Phần nhập hàng mới cho NCC -->
-            <div id="d-input-section" class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg mb-4 hidden">
-                <h4 class="font-bold text-sm mb-2 text-emerald-800">Thêm lần giao hàng</h4>
-                <div class="flex gap-3 items-end">
-                    <div class="flex-1"><label class="block text-xs font-bold mb-1">Ngày giao</label><input id="d-date" type="date" class="w-full border rounded px-3 py-1.5 text-sm"></div>
-                    <div class="w-24"><label class="block text-xs font-bold mb-1">Số lượng</label><input id="d-qty" type="number" min="1" class="w-full border rounded px-3 py-1.5 text-sm"></div>
-                    <button onclick="addDelivery()" class="bg-emerald-600 text-white font-bold px-4 py-1.5 rounded text-sm h-[34px]">Giao</button>
-                </div>
-            </div>
-
-            <h4 class="font-bold text-sm mb-2">Lịch sử giao hàng</h4>
-            <div class="border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 sticky top-0"><tr class="text-xs uppercase"><th class="p-2 border-b">Ngày</th><th class="p-2 border-b text-center">Số lượng</th><th class="p-2 border-b text-center">Người nhập</th></tr></thead>
-                    <tbody id="delivery-tbody" class="divide-y"></tbody>
-                </table>
-            </div>
-
-            <div class="flex justify-end mt-4 pt-4 border-t">
-                <button onclick="closeModal('modal-delivery')" class="px-5 py-2 bg-slate-200 rounded-lg text-sm font-bold">Đóng</button>
-            </div>
-        </div>
+    <div class="dialog-actions">
+      <button class="secondary" value="cancel">Hủy</button>
+      <button id="saveEditBtn" class="primary" value="default">Lưu</button>
     </div>
+    <div id="editMsg"></div>
+  </form>
+</dialog>
 
-    <div id="toast" class="toast">Thành công!</div>
+<dialog id="deliveryDialog">
+  <form method="dialog" id="deliveryForm">
+    <h3>Ghi nhận giao hàng</h3>
+    <input type="hidden" id="deliveryOrderId">
+    <div id="deliverySummary" class="muted" style="margin-bottom:12px"></div>
+    <div class="form-grid">
+      <div><label>Ngày giao hàng *</label><input id="deliveryDate" type="date" required></div>
+      <div><label>Số lượng giao lần này *</label><input id="deliveryQty" type="number" min="1" step="1" required></div>
+      <div class="full"><label>Ghi chú lần giao</label><input id="deliveryNote"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="secondary" value="cancel">Hủy</button>
+      <button id="saveDeliveryBtn" class="primary" value="default">Lưu lần giao</button>
+    </div>
+    <div id="deliveryMsg"></div>
+    <div id="deliveryHistory" style="margin-top:12px"></div>
+  </form>
+</dialog>
 
-    <script>
-        // --- 1. CONFIG FIREBASE (THAY THẾ BẰNG FIREBASE CỦA BẠN) ---
-        const firebaseConfig = {
-            apiKey: "AIzaSy_YOUR_API_KEY",
-            authDomain: "your-project.firebaseapp.com",
-            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-            projectId: "your-project",
-            storageBucket: "your-project.firebasestorage.app",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef123456"
-        };
-        // Dùng try catch để tránh lỗi nếu config chưa chuẩn khi test giao diện
-        try { firebase.initializeApp(firebaseConfig); } catch(e) {}
-       const fbdb = firebase.database(); // Bỏ comment dòng này khi gắn thật config
-        
-        const firebaseConfig = {
+<script type="module">
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import {
+  getDatabase, ref, get, set, push, update, remove, onValue, runTransaction
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+
+const firebaseConfig = {
   apiKey: "AIzaSyCGzT4RjrGJ0TuQxKLvH0OtAOReP3Of0Aw",
   authDomain: "hosiden-osco.firebaseapp.com",
   projectId: "hosiden-osco",
   storageBucket: "hosiden-osco.firebasestorage.app",
   messagingSenderId: "131184698612",
   appId: "1:131184698612:web:8327ee1787794a57cceaa1",
-  measurementId: "G-LWW2N93BNG"
+  measurementId: "G-LWW2N93BNG",
+
+  // NẾU DATABASE CỦA BẠN Ở SINGAPORE, đổi thành:
+  // https://hosiden-osco-default-rtdb.asia-southeast1.firebasedatabase.app
+  databaseURL: "https://hosiden-osco-default-rtdb.firebaseio.com"
 };
-                
-        // --- 2. BIẾN HỆ THỐNG & DANH SÁCH ---
-        let currentUser = null; 
-        // BẠN THÊM BỚT MODEL VÀO ĐÂY
-        const modelList = ['Model X-100', 'Model Y-200', 'Băng chuyền A', 'Máy hàn SMT', 'Chung kho tổng'];
 
-        // --- 3. ĐĂNG NHẬP & PHÂN QUYỀN ---
-        function doLogin() {
-            const u = document.getElementById('login-user').value.trim(), p = document.getElementById('login-pass').value.trim();
-            if (u === 'admin' && p === '123456') { currentUser = { role: 'admin', name: 'Quản trị viên' }; }
-            else if (u === 'ncc' && p === '123456') { currentUser = { role: 'supplier', name: 'Nhà cung cấp' }; }
-            else { document.getElementById('login-error').innerText = "Sai tài khoản/mật khẩu!"; document.getElementById('login-error').classList.remove('hidden'); return; }
-            
-            localStorage.setItem('po_session', JSON.stringify(currentUser));
-            checkAuth();
-        }
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
 
-        function doLogout() { localStorage.removeItem('po_session'); currentUser = null; checkAuth(); }
+// Domain giả dùng để tạo tài khoản Firebase cho nhà cung cấp mà không cần email thật.
+// Nhà cung cấp chỉ cần nhớ "tên đăng nhập" + mật khẩu; hệ thống tự ghép thành email nội bộ này.
+const SUPPLIER_DOMAIN = "supplier.hosiden-osco.local";
+function toLoginEmail(input){
+  const v = input.trim();
+  return v.includes("@") ? v : `${v.toLowerCase().replace(/\s+/g,"")}@${SUPPLIER_DOMAIN}`;
+}
+function authErrorMessage(err){
+  const map = {
+    "auth/invalid-email":"Email/tên đăng nhập không hợp lệ.",
+    "auth/user-not-found":"Tài khoản không tồn tại.",
+    "auth/wrong-password":"Sai mật khẩu.",
+    "auth/invalid-credential":"Sai tên đăng nhập hoặc mật khẩu.",
+    "auth/invalid-login-credentials":"Sai tên đăng nhập hoặc mật khẩu.",
+    "auth/user-disabled":"Tài khoản đã bị vô hiệu hóa.",
+    "auth/too-many-requests":"Bạn đã thử sai quá nhiều lần. Vui lòng thử lại sau.",
+    "auth/network-request-failed":"Lỗi kết nối mạng. Kiểm tra Internet hoặc cấu hình Firebase.",
+    "auth/email-already-in-use":"Tên đăng nhập/email này đã được sử dụng.",
+    "auth/weak-password":"Mật khẩu quá yếu (tối thiểu 6 ký tự).",
+    "auth/operation-not-allowed":"Phương thức Email/Password chưa được bật trong Firebase Console."
+  };
+  const code = err && err.code;
+  return map[code] || (`Lỗi: ${err && err.message ? err.message : err}`);
+}
 
-        function checkAuth() {
-            const session = localStorage.getItem('po_session');
-            if (session) {
-                currentUser = JSON.parse(session);
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('app-screen').classList.remove('hidden');
-                
-                document.getElementById('role-badge').innerText = currentUser.role === 'admin' ? 'Quyền: ADMIN' : 'Quyền: NHÀ CUNG CẤP';
-                
-                // Hiển thị nút Tạo đơn nếu là Admin
-                if (currentUser.role === 'admin') document.getElementById('btn-create-order').classList.remove('hidden');
-                else document.getElementById('btn-create-order').classList.add('hidden');
-                
-                initApp();
-            } else {
-                document.getElementById('login-screen').classList.remove('hidden');
-                document.getElementById('app-screen').classList.add('hidden');
-            }
-        }
+const $ = id => document.getElementById(id);
+let currentUser = null;
+let currentRole = "";
+let orders = {};
+let models = {};
 
-        // --- 4. KHỞI TẠO & RENDER DỮ LIỆU ---
-        function initApp() {
-            // Load Model dropdown
-            const modelSelect = document.getElementById('c-model');
-            modelSelect.innerHTML = modelList.map(m => `<option value="${m}">${m}</option>`).join('');
-            
-            // Lắng nghe Firebase (Demo mảng ảo nếu chưa gắn firebase)
-            // fbdb.ref('orders').on('value', snap => {
-            //     const val = snap.val(); ordersData = [];
-            //     if(val) Object.keys(val).forEach(k => ordersData.push({ id: k, ...val[k] }));
-            //     renderOrders();
-            // });
-            renderOrders(); // Chạy tạm cho demo
-        }
+function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function showMsg(el,msg,type="error"){el.innerHTML=`<div class="${type}">${esc(msg)}</div>`;setTimeout(()=>el.innerHTML="",4000)}
+function deliveredQty(order){
+  return Object.values(order.deliveries || {}).reduce((s,d)=>s+(Number(d.qty)||0),0);
+}
+function statusOf(order){
+  const d=deliveredQty(order), q=Number(order.orderQty)||0;
+  if(d<=0) return "none";
+  if(d<q) return "part";
+  return "done";
+}
+function statusLabel(s){return s==="none"?"Chưa giao":s==="part"?"Đang giao":"Đã giao hoàn thành"}
+function statusClass(s){return s==="none"?"s-none":s==="part"?"s-part":"s-done"}
+function fmtDate(v){return v || "-"}
+function csvCell(v){return `"${String(v??"").replaceAll('"','""')}"`}
 
-        function getStatus(total, delivered) {
-            if (delivered === 0) return { text: 'Chưa giao', cls: 'bg-slate-100 text-slate-600' };
-            if (delivered < total) return { text: 'Đang giao', cls: 'bg-amber-100 text-amber-700' };
-            return { text: 'Đã hoàn thành', cls: 'bg-emerald-100 text-emerald-700' };
-        }
+$("loginForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  try{
+    const email = toLoginEmail($("loginEmail").value);
+    await signInWithEmailAndPassword(auth,email,$("loginPassword").value);
+  }catch(err){showMsg($("loginMsg"),"Đăng nhập thất bại: "+authErrorMessage(err))}
+});
+$("logoutBtn").onclick=()=>signOut(auth);
 
-        function renderOrders() {
-            const keyword = document.getElementById('search-input').value.toLowerCase();
-            const tbody = document.getElementById('orders-tbody'); tbody.innerHTML = '';
-            
-            let filtered = ordersData.filter(o => 
-                (o.productName||'').toLowerCase().includes(keyword) || 
-                (o.productCode||'').toLowerCase().includes(keyword) || 
-                (o.poNumber||'').toLowerCase().includes(keyword) ||
-                (o.model||'').toLowerCase().includes(keyword)
-            );
+onAuthStateChanged(auth, async user=>{
+  if(!user){
+    currentUser=null;currentRole="";
+    $("loginView").classList.remove("hidden");$("appView").classList.add("hidden");return;
+  }
+  currentUser=user;
+  try{
+    const snap=await get(ref(db,`users/${user.uid}`));
+    if(!snap.exists()) throw new Error("Tài khoản chưa được gán quyền trong Realtime Database.");
+    currentRole=snap.val().role;
+    if(!["admin","supplier"].includes(currentRole)) throw new Error("Role không hợp lệ.");
+    $("userEmail").textContent=user.email||user.uid;
+    $("userRole").textContent=currentRole==="admin"?"ADMIN":"NHÀ CUNG CẤP";
+    $("adminPanel").classList.toggle("hidden",currentRole!=="admin");
+    $("adminEditFields").classList.toggle("hidden",currentRole!=="admin");
+    $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
+    startListeners();
+  }catch(err){
+    showMsg($("loginMsg"),err.message);
+    await signOut(auth);
+  }
+});
 
-            if(filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Không có dữ liệu đơn hàng.</td></tr>'; return; }
+function startListeners(){
+  onValue(ref(db,"models"),snap=>{
+    models=snap.val()||{};
+    renderModels(); renderModelSelects(); renderOrders();
+  });
+  onValue(ref(db,"orders"),snap=>{
+    orders=snap.val()||{};
+    renderOrders();
+  });
+}
 
-            filtered.reverse().forEach(o => {
-                const totalDelivered = (o.deliveries || []).reduce((sum, d) => sum + Number(d.qty), 0);
-                const status = getStatus(o.quantity, totalDelivered);
-                const progressPct = Math.min(100, Math.round((totalDelivered / o.quantity) * 100));
+$("accRole").addEventListener("change",()=>{
+  const isAdmin = $("accRole").value==="admin";
+  $("accIdentifierLabel").textContent = isAdmin ? "Email" : "Tên đăng nhập";
+  $("accIdentifier").placeholder = isAdmin ? "vd: [email protected]" : "vd: nhacungcapA";
+  $("accIdentifier").type = isAdmin ? "email" : "text";
+});
 
-                let supplierActions = '';
-                if (currentUser.role === 'supplier') {
-                    supplierActions = `
-                        <button onclick="openSupplierEditModal('${o.id}')" class="text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded text-xs font-bold mr-1 border border-amber-200">Báo giá/PO</button>
-                        <button onclick="openDeliveryModal('${o.id}')" class="text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded text-xs font-bold border border-emerald-200">Giao hàng</button>
-                    `;
-                } else {
-                    supplierActions = `<button onclick="openDeliveryModal('${o.id}')" class="text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs font-bold">Xem LS Giao</button>`;
-                }
+$("accountForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  if(currentRole!=="admin") return;
+  const role = $("accRole").value;
+  const identifier = $("accIdentifier").value.trim();
+  const password = $("accPassword").value;
+  if(password.length<6) return showMsg($("accountMsg"),"Mật khẩu tối thiểu 6 ký tự.");
+  const loginEmail = role==="admin" ? identifier : toLoginEmail(identifier);
 
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-slate-50 transition-colors">
-                        <td class="p-3">
-                            <strong class="text-sm block text-blue-900">${o.productName}</strong>
-                            <span class="text-xs text-slate-500">Mã: ${o.productCode || '-'} | Model: <b class="text-slate-700">${o.model}</b></span>
-                        </td>
-                        <td class="p-3 text-xs">
-                            <div>PO: <b class="text-slate-800">${o.poNumber || '-'}</b></div>
-                            <div>BG: <span class="text-slate-600">${o.quotationId || '-'}</span></div>
-                        </td>
-                        <td class="p-3 w-48">
-                            <div class="flex justify-between text-xs mb-1 font-bold">
-                                <span>${totalDelivered}</span> <span class="text-slate-400">/ ${o.quantity}</span>
-                            </div>
-                            <div class="w-full bg-slate-200 rounded-full h-1.5">
-                                <div class="bg-blue-500 h-1.5 rounded-full" style="width: ${progressPct}%"></div>
-                            </div>
-                        </td>
-                        <td class="p-3 text-center"><span class="px-2.5 py-1 rounded-md text-xs font-bold ${status.cls}">${status.text}</span></td>
-                        <td class="p-3 text-xs text-slate-600 truncate max-w-[150px]" title="${o.notes||''}">${o.notes || '-'}</td>
-                        <td class="p-3 text-center">${supplierActions}</td>
-                    </tr>
-                `;
-            });
-        }
+  // Tạo tài khoản bằng một Firebase App phụ, tách biệt với phiên đăng nhập hiện tại của admin,
+  // để admin không bị tự động chuyển sang đăng nhập là tài khoản vừa tạo.
+  const secondaryApp = initializeApp(firebaseConfig, "secondary-"+Date.now());
+  const secondaryAuth = getAuth(secondaryApp);
+  try{
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, loginEmail, password);
+    await set(ref(db, `users/${cred.user.uid}`), {
+      role,
+      username: role==="supplier" ? identifier : "",
+      email: loginEmail,
+      createdAt: Date.now(),
+      createdBy: currentUser.uid
+    });
+    await signOut(secondaryAuth);
+    e.target.reset();
+    $("accRole").dispatchEvent(new Event("change"));
+    showMsg($("accountMsg"), role==="supplier"
+      ? `Đã tạo tài khoản. Nhà cung cấp đăng nhập bằng tên đăng nhập: "${identifier}"`
+      : "Đã tạo tài khoản admin.", "success");
+  }catch(err){
+    showMsg($("accountMsg"), authErrorMessage(err));
+  }finally{
+    await deleteApp(secondaryApp);
+  }
+});
 
-        // --- 5. LOGIC ADMIN TẠO ĐƠN ---
-        function openCreateModal() {
-            document.getElementById('c-name').value = ''; document.getElementById('c-code').value = ''; document.getElementById('c-qty').value = '1';
-            document.getElementById('modal-create').style.display = 'flex';
-        }
-        
-        function saveOrder() {
-            const name = document.getElementById('c-name').value.trim();
-            const qty = Number(document.getElementById('c-qty').value);
-            const model = document.getElementById('c-model').value;
-            if(!name || !qty || qty <= 0) return alert('Vui lòng nhập Tên SP và Số lượng hợp lệ!');
+$("modelForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(currentRole!=="admin") return;
+  const name=$("newModel").value.trim(); if(!name)return;
+  const r=push(ref(db,"models"));
+  await set(r,{name,createdAt:Date.now(),createdBy:currentUser.uid});
+  $("newModel").value="";
+});
 
-            const newOrder = {
-                productName: name, productCode: document.getElementById('c-code').value.trim(),
-                quantity: qty, model: model,
-                quotationId: '', poNumber: '', notes: '', deliveries: [],
-                createdAt: new Date().toISOString()
-            };
+function renderModels(){
+  const el=$("modelList");el.innerHTML="";
+  if(currentRole!=="admin") return;
+  Object.entries(models).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||"")).forEach(([id,m])=>{
+    const row=document.createElement("div");
+    row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #e2e8f0";
+    row.innerHTML=`<span>${esc(m.name)}</span><button class="danger small" data-mid="${id}">Xóa</button>`;
+    row.querySelector("button").onclick=async()=>{
+      if(confirm(`Xóa model "${m.name}"?`)) await remove(ref(db,`models/${id}`));
+    };
+    el.appendChild(row);
+  });
+}
+function renderModelSelects(){
+  const sorted=Object.entries(models).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
+  for(const id of ["modelSelect","editModel"]){
+    const s=$(id); const old=s.value; s.innerHTML='<option value="">-- Chọn model --</option>';
+    sorted.forEach(([mid,m])=>s.insertAdjacentHTML("beforeend",`<option value="${mid}">${esc(m.name)}</option>`));
+    if([...s.options].some(o=>o.value===old))s.value=old;
+  }
+  const f=$("modelFilter"),old=f.value;
+  f.innerHTML='<option value="">Tất cả model</option>';
+  sorted.forEach(([mid,m])=>f.insertAdjacentHTML("beforeend",`<option value="${mid}">${esc(m.name)}</option>`));
+  if([...f.options].some(o=>o.value===old))f.value=old;
+}
 
-            // fbdb.ref('orders').push(newOrder); // Dùng cho Firebase
-            
-            // Xử lý Offline cho Demo
-            newOrder.id = 'ord_' + Date.now(); ordersData.push(newOrder); renderOrders();
-            
-            showToast('Tạo đơn hàng thành công!');
-            closeModal('modal-create');
-        }
+$("orderForm").addEventListener("submit",async e=>{
+  e.preventDefault(); if(currentRole!=="admin")return;
+  const qty=Number($("orderQty").value);
+  if(!Number.isInteger(qty)||qty<=0)return showMsg($("orderMsg"),"Số lượng phải là số nguyên lớn hơn 0.");
+  const obj={
+    quotationNo:$("quotationNo").value.trim(),
+    productName:$("productName").value.trim(),
+    productCode:$("productCode").value.trim(),
+    orderQty:qty,
+    modelId:$("modelSelect").value,
+    poNo:$("poNo").value.trim(),
+    note:$("note").value.trim(),
+    createdAt:Date.now(),createdBy:currentUser.uid
+  };
+  const r=push(ref(db,"orders"));await set(r,obj);
+  e.target.reset();showMsg($("orderMsg"),"Đã tạo đơn hàng.","success");
+});
 
-        // --- 6. LOGIC NCC CẬP NHẬT CHỨNG TỪ ---
-        function openSupplierEditModal(id) {
-            const order = ordersData.find(o => o.id === id); if(!order) return;
-            document.getElementById('e-id').value = id;
-            document.getElementById('e-quotation').value = order.quotationId || '';
-            document.getElementById('e-po').value = order.poNumber || '';
-            document.getElementById('e-code').value = order.productCode || '';
-            document.getElementById('e-notes').value = order.notes || '';
-            document.getElementById('modal-supplier-edit').style.display = 'flex';
-        }
+let searchDebounce;
+$("searchBox").addEventListener("input",()=>{
+  clearTimeout(searchDebounce);
+  searchDebounce=setTimeout(renderOrders,200);
+});
+["statusFilter","modelFilter"].forEach(id=>$(id).addEventListener("input",renderOrders));
 
-        function saveSupplierInfo() {
-            const id = document.getElementById('e-id').value;
-            const updates = {
-                quotationId: document.getElementById('e-quotation').value.trim(),
-                poNumber: document.getElementById('e-po').value.trim(),
-                productCode: document.getElementById('e-code').value.trim(),
-                notes: document.getElementById('e-notes').value.trim()
-            };
+function renderOrders(){
+  const tbody=$("orderRows"); if(!tbody)return; tbody.innerHTML="";
+  const q=$("searchBox").value.trim().toLowerCase(), sf=$("statusFilter").value, mf=$("modelFilter").value;
+  let list=Object.entries(orders).map(([id,o])=>({id,...o}));
+  list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  list=list.filter(o=>{
+    const s=statusOf(o), hay=[o.quotationNo,o.productName,o.productCode,o.poNo,o.note].join(" ").toLowerCase();
+    return (!q||hay.includes(q))&&(!sf||s===sf)&&(!mf||o.modelId===mf);
+  });
 
-            // fbdb.ref(`orders/${id}`).update(updates); // Dùng cho Firebase
+  let nNone=0,nPart=0,nDone=0;
+  Object.values(orders).forEach(o=>{const s=statusOf(o);if(s==="none")nNone++;else if(s==="part")nPart++;else nDone++});
+  $("stTotal").textContent=Object.keys(orders).length;$("stNone").textContent=nNone;$("stPart").textContent=nPart;$("stDone").textContent=nDone;
 
-            // Xử lý Offline cho Demo
-            const idx = ordersData.findIndex(o => o.id === id);
-            ordersData[idx] = { ...ordersData[idx], ...updates }; renderOrders();
+  for(const o of list){
+    const d=deliveredQty(o), remaining=Math.max(0,Number(o.orderQty||0)-d), s=statusOf(o);
+    const deliveryText=Object.values(o.deliveries||{}).sort((a,b)=>(a.date||"").localeCompare(b.date||""))
+      .map(x=>`${fmtDate(x.date)}: ${Number(x.qty)||0}`).join("<br>")||"-";
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${esc(o.quotationNo||"-")}</td><td><b>${esc(o.productName||"")}</b></td><td>${esc(o.productCode||"-")}</td>
+      <td>${Number(o.orderQty)||0}</td><td>${esc(models[o.modelId]?.name||"-")}</td><td>${esc(o.poNo||"-")}</td>
+      <td><b>${d}</b></td><td>${remaining}</td><td><span class="status ${statusClass(s)}">${statusLabel(s)}</span></td>
+      <td>${deliveryText}</td><td>${esc(o.note||"-")}</td>
+      <td style="white-space:nowrap">
+        <button class="secondary small editBtn">Sửa</button>
+        <button class="primary small delivBtn">Giao hàng</button>
+        ${currentRole==="admin"?'<button class="danger small deleteBtn">Xóa</button>':""}
+      </td>`;
+    tr.querySelector(".editBtn").onclick=()=>openEdit(o.id);
+    tr.querySelector(".delivBtn").onclick=()=>openDelivery(o.id);
+    if(currentRole==="admin")tr.querySelector(".deleteBtn").onclick=async()=>{
+      if(confirm(`Xóa đơn "${o.productName}"?`))await remove(ref(db,`orders/${o.id}`));
+    };
+    tbody.appendChild(tr);
+  }
+}
 
-            showToast('Đã cập nhật chứng từ!');
-            closeModal('modal-supplier-edit');
-        }
+function openEdit(id){
+  const o=orders[id]; if(!o)return;
+  $("editId").value=id;$("editQuotationNo").value=o.quotationNo||"";$("editProductCode").value=o.productCode||"";
+  $("editPoNo").value=o.poNo||"";$("editNote").value=o.note||"";
+  $("editProductName").value=o.productName||"";$("editOrderQty").value=o.orderQty||"";$("editModel").value=o.modelId||"";
+  $("editDialog").showModal();
+}
+$("saveEditBtn").onclick=async e=>{
+  e.preventDefault();
+  const id=$("editId").value,o=orders[id];if(!o)return;
+  const patch={
+    quotationNo:$("editQuotationNo").value.trim(),
+    productCode:$("editProductCode").value.trim(),
+    poNo:$("editPoNo").value.trim(),
+    note:$("editNote").value.trim(),
+    updatedAt:Date.now(),updatedBy:currentUser.uid
+  };
+  if(currentRole==="admin"){
+    const newQty=Number($("editOrderQty").value), d=deliveredQty(o);
+    if(!Number.isInteger(newQty)||newQty<=0)return showMsg($("editMsg"),"Số lượng đặt không hợp lệ.");
+    if(newQty<d)return showMsg($("editMsg"),`Không thể giảm SL đặt xuống ${newQty} vì đã giao ${d}.`);
+    patch.productName=$("editProductName").value.trim();patch.orderQty=newQty;patch.modelId=$("editModel").value;
+  }
+  await update(ref(db,`orders/${id}`),patch);$("editDialog").close();
+};
 
-        // --- 7. LOGIC GIAO HÀNG (CỦA NCC) ---
-        let activeDeliveryOrderId = null;
-        function openDeliveryModal(id) {
-            const order = ordersData.find(o => o.id === id); if(!order) return;
-            activeDeliveryOrderId = id;
-            
-            const totalDelivered = (order.deliveries || []).reduce((sum, d) => sum + Number(d.qty), 0);
-            const remain = order.quantity - totalDelivered;
-            
-            document.getElementById('d-id').value = id;
-            document.getElementById('d-max-qty').value = remain;
-            document.getElementById('d-summary').innerHTML = `Đã giao: <span class="text-blue-600">${totalDelivered}</span> / ${order.quantity} (Còn lại: ${remain})`;
+function openDelivery(id){
+  const o=orders[id]; if(!o)return;
+  $("deliveryOrderId").value=id;$("deliveryDate").value=new Date().toISOString().slice(0,10);$("deliveryQty").value="";$("deliveryNote").value="";
+  renderDeliveryHistory(id);$("deliveryDialog").showModal();
+}
+function renderDeliveryHistory(id){
+  const o=orders[id],d=deliveredQty(o),remaining=Math.max(0,Number(o.orderQty)-d);
+  $("deliverySummary").innerHTML=`<b>${esc(o.productName)}</b> • Đặt: ${o.orderQty} • Đã giao: ${d} • Còn lại: ${remaining}`;
+  const hist=$("deliveryHistory");hist.innerHTML="<b>Lịch sử giao hàng</b>";
+  const arr=Object.entries(o.deliveries||{}).sort((a,b)=>(b[1].date||"").localeCompare(a[1].date||""));
+  if(!arr.length)hist.insertAdjacentHTML("beforeend",'<div class="muted" style="margin-top:8px">Chưa có lần giao nào.</div>');
+  arr.forEach(([did,x])=>{
+    const div=document.createElement("div");div.className="delivery-item";
+    div.innerHTML=`<div><b>${esc(x.date)}</b> — SL: <b>${Number(x.qty)||0}</b></div><div class="muted">${esc(x.note||"")}</div>
+      <button class="danger small" style="margin-top:6px">Xóa lần giao</button>`;
+    div.querySelector("button").onclick=async()=>{
+      if(confirm("Xóa lần giao này?")){await remove(ref(db,`orders/${id}/deliveries/${did}`));renderDeliveryHistory(id)}
+    };
+    hist.appendChild(div);
+  });
+}
+$("saveDeliveryBtn").onclick=async e=>{
+  e.preventDefault();
+  const id=$("deliveryOrderId").value, qty=Number($("deliveryQty").value), date=$("deliveryDate").value;
+  if(!Number.isInteger(qty)||qty<=0||!date)return showMsg($("deliveryMsg"),"Nhập ngày giao và số lượng hợp lệ.");
+  const orderRef=ref(db,`orders/${id}`);
+  try{
+    const result=await runTransaction(orderRef,order=>{
+      if(!order)return order;
+      const current=Object.values(order.deliveries||{}).reduce((s,d)=>s+(Number(d.qty)||0),0);
+      if(current+qty>Number(order.orderQty)) return; // abort
+      order.deliveries=order.deliveries||{};
+      const key=crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+"_"+Math.random().toString(36).slice(2);
+      order.deliveries[key]={date,qty,note:$("deliveryNote").value.trim(),createdAt:Date.now(),createdBy:currentUser.uid};
+      return order;
+    });
+    if(!result.committed)return showMsg($("deliveryMsg"),"Không thể lưu: tổng số giao sẽ lớn hơn số lượng đặt.");
+    $("deliveryDialog").close();
+  }catch(err){showMsg($("deliveryMsg"),err.message)}
+};
 
-            // Form nhập chỉ hiện cho NCC và khi số lượng còn lại > 0
-            if(currentUser.role === 'supplier' && remain > 0) {
-                document.getElementById('d-input-section').classList.remove('hidden');
-                document.getElementById('d-date').valueAsDate = new Date();
-                document.getElementById('d-qty').value = '';
-                document.getElementById('d-qty').max = remain;
-            } else {
-                document.getElementById('d-input-section').classList.add('hidden');
-            }
-
-            renderDeliveryHistory(order.deliveries || []);
-            document.getElementById('modal-delivery').style.display = 'flex';
-        }
-
-        function renderDeliveryHistory(deliveries) {
-            const tbody = document.getElementById('delivery-tbody'); tbody.innerHTML = '';
-            if(deliveries.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Chưa có lịch sử giao hàng.</td></tr>'; return; }
-            
-            [...deliveries].reverse().forEach(d => {
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-2 border-b text-xs">${d.date}</td>
-                        <td class="p-2 border-b text-center font-bold text-emerald-600">+${d.qty}</td>
-                        <td class="p-2 border-b text-center text-xs text-slate-500">${d.user || 'NCC'}</td>
-                    </tr>`;
-            });
-        }
-
-        function addDelivery() {
-            const date = document.getElementById('d-date').value;
-            const qty = Number(document.getElementById('d-qty').value);
-            const max = Number(document.getElementById('d-max-qty').value);
-
-            if(!date || !qty || qty <= 0) return alert('Nhập ngày và số lượng giao hợp lệ!');
-            if(qty > max) return alert(`Không thể giao vượt quá số lượng đặt! (Chỉ còn ${max})`);
-
-            const newDel = { date, qty, user: currentUser.name, timestamp: Date.now() };
-
-            const order = ordersData.find(o => o.id === activeDeliveryOrderId);
-            const updatedDeliveries = [...(order.deliveries || []), newDel];
-
-            // fbdb.ref(`orders/${activeDeliveryOrderId}/deliveries`).set(updatedDeliveries); // Dùng cho Firebase
-
-            // Xử lý Offline cho Demo
-            order.deliveries = updatedDeliveries;
-            renderOrders(); openDeliveryModal(activeDeliveryOrderId); // Re-render modal
-
-            showToast('Đã thêm lần giao hàng!');
-        }
-
-        // --- TIỆN ÍCH ---
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg; t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 3000);
-        }
-
-        // Check login on start
-        if(localStorage.getItem('po_session')) checkAuth();
-    </script>
+$("exportBtn").onclick=()=>{
+  const header=["Mã báo giá","Tên sản phẩm","Mã sản phẩm","SL đặt","Model","Mã PO","Đã giao","Còn lại","Trạng thái","Ghi chú","Chi tiết giao"];
+  const rows=[header.map(csvCell).join(",")];
+  Object.entries(orders).forEach(([id,o])=>{
+    const d=deliveredQty(o),detail=Object.values(o.deliveries||{}).map(x=>`${x.date}:${x.qty}`).join(" | ");
+    rows.push([o.quotationNo,o.productName,o.productCode,o.orderQty,models[o.modelId]?.name||"",o.poNo,d,Math.max(0,o.orderQty-d),statusLabel(statusOf(o)),o.note,detail].map(csvCell).join(","));
+  });
+  const blob=new Blob(["\uFEFF"+rows.join("\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`orders_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+};
+</script>
 </body>
 </html>
