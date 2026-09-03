@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theo dõi Đặt Hàng & Giao Hàng NCC</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --main-bg: #f8fafc; }
+        body { background-color: var(--main-bg); font-family: system-ui, -apple-system, sans-serif; }
+        .modal-bg { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 50; align-items: center; justify-content: center; padding: 20px; }
+        .modal { background: #fff; border-radius: 12px; width: 600px; max-width: 100%; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 60; display: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 bg-slate-900 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
+            <h1 class="font-bold text-2xl text-center mb-2 text-blue-600">PO TRACKER</h1>
+            <p class="text-sm text-center text-slate-500 mb-6">Theo dõi đặt hàng & giao hàng</p>
+            <div id="login-error" class="text-red-500 text-sm mb-4 hidden text-center font-medium bg-red-50 p-2 rounded"></div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Tài khoản</label>
+                    <input id="login-user" type="text" placeholder="admin hoặc ncc" class="w-full border rounded-lg px-3 py-2 outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Mật khẩu</label>
+                    <input id="login-pass" type="password" placeholder="123456" class="w-full border rounded-lg px-3 py-2 outline-none focus:border-blue-500">
+                </div>
+                <button onclick="doLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition-colors">Đăng nhập</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-screen" class="hidden flex-1 flex flex-col">
+        <header class="bg-blue-700 text-white px-6 py-4 flex justify-between items-center shadow">
+            <div class="font-bold text-lg flex items-center gap-2">
+                <span>📦 QUẢN LÝ ĐƠN HÀNG NCC</span>
+                <span id="role-badge" class="text-[10px] bg-blue-900 px-2 py-1 rounded-full uppercase ml-2 border border-blue-500"></span>
+            </div>
+            <button onclick="doLogout()" class="text-sm bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded font-medium transition-colors">Đăng xuất</button>
+        </header>
+
+        <main class="p-6 max-w-full mx-auto w-full flex-1">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex justify-between items-center">
+                <div class="flex gap-2">
+                    <input type="text" id="search-input" oninput="renderOrders()" placeholder="🔍 Tìm SP, PO, Model..." class="border rounded-lg px-4 py-2 w-72 text-sm outline-none focus:border-blue-500">
+                </div>
+                <!-- Nút này chỉ Admin mới thấy -->
+                <button id="btn-create-order" onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm hidden">+ Tạo Đơn Mới</button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-700 uppercase text-xs border-b">
+                                <th class="p-3">Sản phẩm & Model</th>
+                                <th class="p-3">Chứng từ (PO / BG)</th>
+                                <th class="p-3 text-center">Tiến độ giao hàng</th>
+                                <th class="p-3 text-center">Trạng thái</th>
+                                <th class="p-3">Ghi chú</th>
+                                <th class="p-3 text-center">Thao tác NCC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL 1: TẠO ĐƠN HÀNG (Dành cho Admin) -->
+    <div id="modal-create" class="modal-bg">
+        <div class="modal">
+            <h3 class="font-bold text-lg border-b pb-3 mb-4 text-blue-700">Tạo Đơn Đặt Hàng Mới</h3>
+            <div class="space-y-4">
+                <div><label class="block text-xs font-bold mb-1">Tên Sản Phẩm *</label><input id="c-name" type="text" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold mb-1">Mã Sản Phẩm</label><input id="c-code" type="text" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></div>
+                    <div><label class="block text-xs font-bold mb-1">Số Lượng Đặt *</label><input id="c-qty" type="number" min="1" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></div>
+                </div>
+                <div><label class="block text-xs font-bold mb-1">Dùng cho Model *</label><select id="c-model" class="w-full border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"></select></div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6 pt-4 border-t">
+                <button onclick="closeModal('modal-create')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium">Hủy</button>
+                <button onclick="saveOrder()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm">Lưu Đơn</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: NCC CẬP NHẬT THÔNG TIN -->
+    <div id="modal-supplier-edit" class="modal-bg">
+        <div class="modal">
+            <h3 class="font-bold text-lg border-b pb-3 mb-4 text-amber-600">NCC Cập Nhật Chứng Từ</h3>
+            <input type="hidden" id="e-id">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold mb-1">Mã Báo Giá</label><input id="e-quotation" type="text" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></div>
+                    <div><label class="block text-xs font-bold mb-1">Mã Số PO</label><input id="e-po" type="text" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></div>
+                </div>
+                <div><label class="block text-xs font-bold mb-1">Cập nhật Mã SP (Nếu cần đổi)</label><input id="e-code" type="text" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></div>
+                <div><label class="block text-xs font-bold mb-1">Ghi chú</label><textarea id="e-notes" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm outline-none"></textarea></div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6 pt-4 border-t">
+                <button onclick="closeModal('modal-supplier-edit')" class="px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium">Hủy</button>
+                <button onclick="saveSupplierInfo()" class="px-4 py-2 bg-amber-500 text-white font-bold rounded-lg text-sm">Cập nhật</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: GIAO HÀNG & LỊCH SỬ -->
+    <div id="modal-delivery" class="modal-bg">
+        <div class="modal w-[700px]">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="font-bold text-lg text-emerald-600">Quản Lý Giao Hàng</h3>
+                <div class="text-sm font-bold bg-slate-100 px-3 py-1 rounded" id="d-summary"></div>
+            </div>
+            <input type="hidden" id="d-id">
+            <input type="hidden" id="d-max-qty">
+            
+            <!-- Phần nhập hàng mới cho NCC -->
+            <div id="d-input-section" class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg mb-4 hidden">
+                <h4 class="font-bold text-sm mb-2 text-emerald-800">Thêm lần giao hàng</h4>
+                <div class="flex gap-3 items-end">
+                    <div class="flex-1"><label class="block text-xs font-bold mb-1">Ngày giao</label><input id="d-date" type="date" class="w-full border rounded px-3 py-1.5 text-sm"></div>
+                    <div class="w-24"><label class="block text-xs font-bold mb-1">Số lượng</label><input id="d-qty" type="number" min="1" class="w-full border rounded px-3 py-1.5 text-sm"></div>
+                    <button onclick="addDelivery()" class="bg-emerald-600 text-white font-bold px-4 py-1.5 rounded text-sm h-[34px]">Giao</button>
+                </div>
+            </div>
+
+            <h4 class="font-bold text-sm mb-2">Lịch sử giao hàng</h4>
+            <div class="border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 sticky top-0"><tr class="text-xs uppercase"><th class="p-2 border-b">Ngày</th><th class="p-2 border-b text-center">Số lượng</th><th class="p-2 border-b text-center">Người nhập</th></tr></thead>
+                    <tbody id="delivery-tbody" class="divide-y"></tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end mt-4 pt-4 border-t">
+                <button onclick="closeModal('modal-delivery')" class="px-5 py-2 bg-slate-200 rounded-lg text-sm font-bold">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Thành công!</div>
+
+    <script>
+        // --- 1. CONFIG FIREBASE (THAY THẾ BẰNG FIREBASE CỦA BẠN) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSy_YOUR_API_KEY",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project",
+            storageBucket: "your-project.firebasestorage.app",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+        // Dùng try catch để tránh lỗi nếu config chưa chuẩn khi test giao diện
+        try { firebase.initializeApp(firebaseConfig); } catch(e) {}
+       const fbdb = firebase.database(); // Bỏ comment dòng này khi gắn thật config
+        
+        const firebaseConfig = {
+  apiKey: "AIzaSyCGzT4RjrGJ0TuQxKLvH0OtAOReP3Of0Aw",
+  authDomain: "hosiden-osco.firebaseapp.com",
+  projectId: "hosiden-osco",
+  storageBucket: "hosiden-osco.firebasestorage.app",
+  messagingSenderId: "131184698612",
+  appId: "1:131184698612:web:8327ee1787794a57cceaa1",
+  measurementId: "G-LWW2N93BNG"
+};
+                
+        // --- 2. BIẾN HỆ THỐNG & DANH SÁCH ---
+        let currentUser = null; 
+        // BẠN THÊM BỚT MODEL VÀO ĐÂY
+        const modelList = ['Model X-100', 'Model Y-200', 'Băng chuyền A', 'Máy hàn SMT', 'Chung kho tổng'];
+
+        // --- 3. ĐĂNG NHẬP & PHÂN QUYỀN ---
+        function doLogin() {
+            const u = document.getElementById('login-user').value.trim(), p = document.getElementById('login-pass').value.trim();
+            if (u === 'admin' && p === '123456') { currentUser = { role: 'admin', name: 'Quản trị viên' }; }
+            else if (u === 'ncc' && p === '123456') { currentUser = { role: 'supplier', name: 'Nhà cung cấp' }; }
+            else { document.getElementById('login-error').innerText = "Sai tài khoản/mật khẩu!"; document.getElementById('login-error').classList.remove('hidden'); return; }
+            
+            localStorage.setItem('po_session', JSON.stringify(currentUser));
+            checkAuth();
+        }
+
+        function doLogout() { localStorage.removeItem('po_session'); currentUser = null; checkAuth(); }
+
+        function checkAuth() {
+            const session = localStorage.getItem('po_session');
+            if (session) {
+                currentUser = JSON.parse(session);
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-screen').classList.remove('hidden');
+                
+                document.getElementById('role-badge').innerText = currentUser.role === 'admin' ? 'Quyền: ADMIN' : 'Quyền: NHÀ CUNG CẤP';
+                
+                // Hiển thị nút Tạo đơn nếu là Admin
+                if (currentUser.role === 'admin') document.getElementById('btn-create-order').classList.remove('hidden');
+                else document.getElementById('btn-create-order').classList.add('hidden');
+                
+                initApp();
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
+            }
+        }
+
+        // --- 4. KHỞI TẠO & RENDER DỮ LIỆU ---
+        function initApp() {
+            // Load Model dropdown
+            const modelSelect = document.getElementById('c-model');
+            modelSelect.innerHTML = modelList.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+            // Lắng nghe Firebase (Demo mảng ảo nếu chưa gắn firebase)
+            // fbdb.ref('orders').on('value', snap => {
+            //     const val = snap.val(); ordersData = [];
+            //     if(val) Object.keys(val).forEach(k => ordersData.push({ id: k, ...val[k] }));
+            //     renderOrders();
+            // });
+            renderOrders(); // Chạy tạm cho demo
+        }
+
+        function getStatus(total, delivered) {
+            if (delivered === 0) return { text: 'Chưa giao', cls: 'bg-slate-100 text-slate-600' };
+            if (delivered < total) return { text: 'Đang giao', cls: 'bg-amber-100 text-amber-700' };
+            return { text: 'Đã hoàn thành', cls: 'bg-emerald-100 text-emerald-700' };
+        }
+
+        function renderOrders() {
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            const tbody = document.getElementById('orders-tbody'); tbody.innerHTML = '';
+            
+            let filtered = ordersData.filter(o => 
+                (o.productName||'').toLowerCase().includes(keyword) || 
+                (o.productCode||'').toLowerCase().includes(keyword) || 
+                (o.poNumber||'').toLowerCase().includes(keyword) ||
+                (o.model||'').toLowerCase().includes(keyword)
+            );
+
+            if(filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Không có dữ liệu đơn hàng.</td></tr>'; return; }
+
+            filtered.reverse().forEach(o => {
+                const totalDelivered = (o.deliveries || []).reduce((sum, d) => sum + Number(d.qty), 0);
+                const status = getStatus(o.quantity, totalDelivered);
+                const progressPct = Math.min(100, Math.round((totalDelivered / o.quantity) * 100));
+
+                let supplierActions = '';
+                if (currentUser.role === 'supplier') {
+                    supplierActions = `
+                        <button onclick="openSupplierEditModal('${o.id}')" class="text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded text-xs font-bold mr-1 border border-amber-200">Báo giá/PO</button>
+                        <button onclick="openDeliveryModal('${o.id}')" class="text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded text-xs font-bold border border-emerald-200">Giao hàng</button>
+                    `;
+                } else {
+                    supplierActions = `<button onclick="openDeliveryModal('${o.id}')" class="text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs font-bold">Xem LS Giao</button>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50 transition-colors">
+                        <td class="p-3">
+                            <strong class="text-sm block text-blue-900">${o.productName}</strong>
+                            <span class="text-xs text-slate-500">Mã: ${o.productCode || '-'} | Model: <b class="text-slate-700">${o.model}</b></span>
+                        </td>
+                        <td class="p-3 text-xs">
+                            <div>PO: <b class="text-slate-800">${o.poNumber || '-'}</b></div>
+                            <div>BG: <span class="text-slate-600">${o.quotationId || '-'}</span></div>
+                        </td>
+                        <td class="p-3 w-48">
+                            <div class="flex justify-between text-xs mb-1 font-bold">
+                                <span>${totalDelivered}</span> <span class="text-slate-400">/ ${o.quantity}</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-1.5">
+                                <div class="bg-blue-500 h-1.5 rounded-full" style="width: ${progressPct}%"></div>
+                            </div>
+                        </td>
+                        <td class="p-3 text-center"><span class="px-2.5 py-1 rounded-md text-xs font-bold ${status.cls}">${status.text}</span></td>
+                        <td class="p-3 text-xs text-slate-600 truncate max-w-[150px]" title="${o.notes||''}">${o.notes || '-'}</td>
+                        <td class="p-3 text-center">${supplierActions}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // --- 5. LOGIC ADMIN TẠO ĐƠN ---
+        function openCreateModal() {
+            document.getElementById('c-name').value = ''; document.getElementById('c-code').value = ''; document.getElementById('c-qty').value = '1';
+            document.getElementById('modal-create').style.display = 'flex';
+        }
+        
+        function saveOrder() {
+            const name = document.getElementById('c-name').value.trim();
+            const qty = Number(document.getElementById('c-qty').value);
+            const model = document.getElementById('c-model').value;
+            if(!name || !qty || qty <= 0) return alert('Vui lòng nhập Tên SP và Số lượng hợp lệ!');
+
+            const newOrder = {
+                productName: name, productCode: document.getElementById('c-code').value.trim(),
+                quantity: qty, model: model,
+                quotationId: '', poNumber: '', notes: '', deliveries: [],
+                createdAt: new Date().toISOString()
+            };
+
+            // fbdb.ref('orders').push(newOrder); // Dùng cho Firebase
+            
+            // Xử lý Offline cho Demo
+            newOrder.id = 'ord_' + Date.now(); ordersData.push(newOrder); renderOrders();
+            
+            showToast('Tạo đơn hàng thành công!');
+            closeModal('modal-create');
+        }
+
+        // --- 6. LOGIC NCC CẬP NHẬT CHỨNG TỪ ---
+        function openSupplierEditModal(id) {
+            const order = ordersData.find(o => o.id === id); if(!order) return;
+            document.getElementById('e-id').value = id;
+            document.getElementById('e-quotation').value = order.quotationId || '';
+            document.getElementById('e-po').value = order.poNumber || '';
+            document.getElementById('e-code').value = order.productCode || '';
+            document.getElementById('e-notes').value = order.notes || '';
+            document.getElementById('modal-supplier-edit').style.display = 'flex';
+        }
+
+        function saveSupplierInfo() {
+            const id = document.getElementById('e-id').value;
+            const updates = {
+                quotationId: document.getElementById('e-quotation').value.trim(),
+                poNumber: document.getElementById('e-po').value.trim(),
+                productCode: document.getElementById('e-code').value.trim(),
+                notes: document.getElementById('e-notes').value.trim()
+            };
+
+            // fbdb.ref(`orders/${id}`).update(updates); // Dùng cho Firebase
+
+            // Xử lý Offline cho Demo
+            const idx = ordersData.findIndex(o => o.id === id);
+            ordersData[idx] = { ...ordersData[idx], ...updates }; renderOrders();
+
+            showToast('Đã cập nhật chứng từ!');
+            closeModal('modal-supplier-edit');
+        }
+
+        // --- 7. LOGIC GIAO HÀNG (CỦA NCC) ---
+        let activeDeliveryOrderId = null;
+        function openDeliveryModal(id) {
+            const order = ordersData.find(o => o.id === id); if(!order) return;
+            activeDeliveryOrderId = id;
+            
+            const totalDelivered = (order.deliveries || []).reduce((sum, d) => sum + Number(d.qty), 0);
+            const remain = order.quantity - totalDelivered;
+            
+            document.getElementById('d-id').value = id;
+            document.getElementById('d-max-qty').value = remain;
+            document.getElementById('d-summary').innerHTML = `Đã giao: <span class="text-blue-600">${totalDelivered}</span> / ${order.quantity} (Còn lại: ${remain})`;
+
+            // Form nhập chỉ hiện cho NCC và khi số lượng còn lại > 0
+            if(currentUser.role === 'supplier' && remain > 0) {
+                document.getElementById('d-input-section').classList.remove('hidden');
+                document.getElementById('d-date').valueAsDate = new Date();
+                document.getElementById('d-qty').value = '';
+                document.getElementById('d-qty').max = remain;
+            } else {
+                document.getElementById('d-input-section').classList.add('hidden');
+            }
+
+            renderDeliveryHistory(order.deliveries || []);
+            document.getElementById('modal-delivery').style.display = 'flex';
+        }
+
+        function renderDeliveryHistory(deliveries) {
+            const tbody = document.getElementById('delivery-tbody'); tbody.innerHTML = '';
+            if(deliveries.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Chưa có lịch sử giao hàng.</td></tr>'; return; }
+            
+            [...deliveries].reverse().forEach(d => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2 border-b text-xs">${d.date}</td>
+                        <td class="p-2 border-b text-center font-bold text-emerald-600">+${d.qty}</td>
+                        <td class="p-2 border-b text-center text-xs text-slate-500">${d.user || 'NCC'}</td>
+                    </tr>`;
+            });
+        }
+
+        function addDelivery() {
+            const date = document.getElementById('d-date').value;
+            const qty = Number(document.getElementById('d-qty').value);
+            const max = Number(document.getElementById('d-max-qty').value);
+
+            if(!date || !qty || qty <= 0) return alert('Nhập ngày và số lượng giao hợp lệ!');
+            if(qty > max) return alert(`Không thể giao vượt quá số lượng đặt! (Chỉ còn ${max})`);
+
+            const newDel = { date, qty, user: currentUser.name, timestamp: Date.now() };
+
+            const order = ordersData.find(o => o.id === activeDeliveryOrderId);
+            const updatedDeliveries = [...(order.deliveries || []), newDel];
+
+            // fbdb.ref(`orders/${activeDeliveryOrderId}/deliveries`).set(updatedDeliveries); // Dùng cho Firebase
+
+            // Xử lý Offline cho Demo
+            order.deliveries = updatedDeliveries;
+            renderOrders(); openDeliveryModal(activeDeliveryOrderId); // Re-render modal
+
+            showToast('Đã thêm lần giao hàng!');
+        }
+
+        // --- TIỆN ÍCH ---
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        // Check login on start
+        if(localStorage.getItem('po_session')) checkAuth();
+    </script>
+</body>
+</html>
