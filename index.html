@@ -127,6 +127,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyADKOR3avOawahRDCqSAof-mCKsEnw5DFY",
   authDomain: "hvbg-12793.firebaseapp.com",
+  databaseURL: "https://hvbg-12793-default-rtdb.firebaseio.com", // ⚠️ THAY bằng URL thật của bạn — xem hướng dẫn bên dưới
   projectId: "hvbg-12793",
   storageBucket: "hvbg-12793.firebasestorage.app",
   messagingSenderId: "741904148613",
@@ -186,16 +187,26 @@ async function doLogin(username, password){
   const email = toEmail(username);
   try{
     await auth.signInWithEmailAndPassword(email, password);
+    return;
   }catch(err){
     // First-run bootstrap: allow the seeded admin account to self-create once.
-    if(err.code === 'auth/user-not-found' && username.toLowerCase() === ADMIN_USERNAME && password === ADMIN_DEFAULT_PW){
+    // Newer Firebase projects have "Email Enumeration Protection" on by default,
+    // which returns the generic 'auth/invalid-credential' for BOTH "no such user"
+    // and "wrong password" — so we treat it the same as user-not-found here.
+    const bootstrapEligible = username.toLowerCase() === ADMIN_USERNAME && password === ADMIN_DEFAULT_PW &&
+      ['auth/user-not-found', 'auth/invalid-credential', 'auth/wrong-password'].includes(err.code);
+    if(!bootstrapEligible) throw err;
+    try{
       const cred = await auth.createUserWithEmailAndPassword(email, password);
       await db.ref('users/' + cred.user.uid).set({
         username: ADMIN_USERNAME, role: 'admin', disabled: false, createdAt: Date.now()
       });
-      return;
+    }catch(createErr){
+      // Account already exists (created previously) — the original sign-in error
+      // (likely a real wrong password, or the DB profile write failed last time) stands.
+      if(createErr.code === 'auth/email-already-in-use') throw err;
+      throw createErr;
     }
-    throw err;
   }
 }
 
