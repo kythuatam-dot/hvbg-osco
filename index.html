@@ -1,536 +1,898 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Theo dõi Đặt hàng & Giao hàng - Hosiden OSCO</title>
-  <style>
-    :root{
-      --bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#64748b;--line:#e2e8f0;
-      --primary:#2563eb;--primary2:#1d4ed8;--danger:#dc2626;--ok:#15803d;--warn:#b45309;
-      --shadow:0 10px 25px rgba(15,23,42,.08)
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .wrap{max-width:1450px;margin:auto;padding:22px}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
-    .brand h1{font-size:22px;margin:0 0 4px}.brand p{margin:0;color:var(--muted);font-size:13px}
-    .userbox{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .pill{padding:7px 11px;border-radius:999px;background:#e8eefc;color:#1e40af;font-size:12px;font-weight:700}
-    button,.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer}
-    .primary{background:var(--primary);color:white}.primary:hover{background:var(--primary2)}
-    .secondary{background:#e2e8f0;color:#334155}.danger{background:#fee2e2;color:#991b1b}
-    .small{padding:6px 9px;font-size:12px}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px}
-    .login-card{max-width:430px;margin:8vh auto}
-    .card h2,.card h3{margin-top:0}
-    label{display:block;font-size:12px;font-weight:800;margin:0 0 6px;color:#475569}
-    input,select,textarea{width:100%;padding:10px 11px;border:1px solid #cbd5e1;border-radius:9px;background:white;color:#0f172a}
-    textarea{min-height:80px;resize:vertical}
-    .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-    .full{grid-column:1/-1}
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-    .toolbar input,.toolbar select{width:auto;min-width:170px}
-    table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
-    th,td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
-    th{position:sticky;top:0;background:#f8fafc;z-index:1;color:#475569;font-size:12px}
-    .table-wrap{overflow:auto;max-height:65vh;border:1px solid var(--line);border-radius:10px}
-    .status{display:inline-flex;padding:5px 8px;border-radius:999px;font-weight:800;font-size:11px;white-space:nowrap}
-    .s-none{background:#f1f5f9;color:#475569}.s-part{background:#ffedd5;color:#9a3412}.s-done{background:#dcfce7;color:#166534}
-    .muted{color:var(--muted)} .hidden{display:none!important}
-    .stat{grid-column:span 3}.stat .n{font-size:26px;font-weight:900}.stat .t{font-size:12px;color:var(--muted)}
-    .main{grid-column:span 12}.side{grid-column:span 4}.wide{grid-column:span 8}
-    .error{background:#fee2e2;color:#991b1b;padding:10px;border-radius:8px;font-size:13px;margin-top:10px}
-    .success{background:#dcfce7;color:#166534;padding:10px;border-radius:8px;font-size:13px;margin-top:10px}
-    dialog{border:0;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:min(720px,94vw)}
-    dialog::backdrop{background:rgba(15,23,42,.45)}
-    .dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
-    .delivery-item{border:1px solid var(--line);padding:10px;border-radius:9px;margin:8px 0;background:#f8fafc}
-    @media(max-width:900px){.stat{grid-column:span 6}.side,.wide{grid-column:span 12}.form-grid{grid-template-columns:1fr}}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HOSIDEN · Theo dõi đơn hàng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#131C2E;         /* navy ink - text, sidebar */
+    --ink-soft:#2A3A57;
+    --steel:#3D6B94;       /* primary action */
+    --steel-dark:#2C5170;
+    --slate-bg:#EEF1F5;    /* app background */
+    --panel:#FFFFFF;
+    --line:#DCE1E8;
+    --amber:#D98C2B;       /* accent / partial status */
+    --amber-bg:#FBF0DE;
+    --green:#2F7D53;       /* success / delivered */
+    --green-bg:#E4F2E9;
+    --red:#B6483F;         /* danger / not delivered */
+    --red-bg:#F7E7E5;
+  }
+  *{font-family:'Inter',system-ui,sans-serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  body{background:var(--slate-bg); color:var(--ink);}
+  .brandmark{
+    font-weight:800; letter-spacing:0.02em; font-size:1.35rem; color:#fff;
+  }
+  .sidebar{background:var(--ink);}
+  .navitem{color:#B9C3D6; transition:background .15s,color .15s;}
+  .navitem:hover{background:var(--ink-soft); color:#fff;}
+  .navitem.active{background:var(--steel); color:#fff;}
+  .btn-primary{background:var(--steel); color:#fff; transition:background .15s;}
+  .btn-primary:hover{background:var(--steel-dark);}
+  .btn-primary:disabled{opacity:.5; cursor:not-allowed;}
+  .btn-outline{border:1px solid var(--line); color:var(--ink); background:#fff;}
+  .btn-outline:hover{border-color:var(--steel); color:var(--steel);}
+  .btn-danger{background:var(--red); color:#fff;}
+  .btn-danger:hover{opacity:.88;}
+  .panel{background:var(--panel); border:1px solid var(--line);}
+  input[type=text], input[type=number], input[type=password], input[type=month], input[type=date], select, textarea{
+    border:1px solid var(--line); background:#fff; border-radius:6px; padding:.5rem .65rem; font-size:.875rem; color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--steel); outline-offset:1px; border-color:var(--steel);}
+  table.data th{font-size:.72rem; text-transform:none; letter-spacing:0.01em; color:#5B6B85; font-weight:600; text-align:left; padding:.55rem .65rem; border-bottom:1px solid var(--line); white-space:nowrap;}
+  table.data td{padding:.55rem .65rem; border-bottom:1px solid #EEF0F3; font-size:.83rem; vertical-align:top;}
+  table.data tr:hover td{background:#FAFBFC;}
+  .badge{display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .55rem; border-radius:5px; font-size:.72rem; font-weight:600;}
+  .badge-none{background:var(--red-bg); color:var(--red);}
+  .badge-partial{background:var(--amber-bg); color:var(--amber);}
+  .badge-full{background:var(--green-bg); color:var(--green);}
+  .modal-backdrop{background:rgba(19,28,46,.55);}
+  ::-webkit-scrollbar{height:8px; width:8px;}
+  ::-webkit-scrollbar-thumb{background:#C7CEDA; border-radius:4px;}
+  .fade-in{animation:fadeIn .18s ease-out;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+  .link-btn{color:var(--steel); font-weight:600; cursor:pointer;}
+  .link-btn:hover{text-decoration:underline;}
+</style>
 </head>
-<body>
-<div class="wrap">
-  <section id="loginView" class="card login-card">
-    <h2>Đăng nhập</h2>
-    <p class="muted">Hệ thống theo dõi đặt hàng & giao hàng với nhà cung cấp.</p>
-    <form id="loginForm">
-      <div style="margin-bottom:12px">
-        <label>Email (Admin) hoặc Tên đăng nhập (Nhà cung cấp)</label><input id="loginEmail" type="text" required autocomplete="username">
+<body class="min-h-screen">
+
+<!-- ================= LOGIN VIEW ================= -->
+<div id="view-login" class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="inline-block px-4 py-2 rounded" style="background:var(--ink);">
+        <span class="brandmark">HOSIDEN</span>
       </div>
-      <div style="margin-bottom:12px">
-        <label>Mật khẩu</label><input id="loginPassword" type="password" required autocomplete="current-password">
+      <p class="mt-3 text-sm text-slate-500">Hệ thống theo dõi đơn đặt hàng &amp; giao hàng</p>
+    </div>
+    <form id="login-form" class="panel rounded-lg p-6 space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Tài khoản</label>
+        <input type="text" id="login-username" required class="w-full" placeholder="vd: admin" autocomplete="username">
       </div>
-      <button class="primary" type="submit" style="width:100%">Đăng nhập</button>
-      <div id="loginMsg"></div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Mật khẩu</label>
+        <input type="password" id="login-password" required class="w-full" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="login-error" class="hidden text-sm rounded px-3 py-2" style="background:var(--red-bg); color:var(--red);"></div>
+      <button type="submit" id="login-btn" class="btn-primary w-full rounded-md py-2.5 font-semibold text-sm">Đăng nhập</button>
+      <p class="text-xs text-slate-400 text-center pt-1">Tài khoản admin mặc định: <span class="mono">admin</span> / <span class="mono">hvbg2025</span></p>
     </form>
-  </section>
-
-  <section id="appView" class="hidden">
-    <div class="topbar">
-      <div class="brand"><h1>Đặt hàng & Giao hàng</h1><p>Firebase Realtime Database • Hosiden OSCO</p></div>
-      <div class="userbox">
-        <span id="userEmail" class="muted"></span><span id="userRole" class="pill"></span>
-        <button id="logoutBtn" class="secondary small">Đăng xuất</button>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div class="card stat"><div class="n" id="stTotal">0</div><div class="t">Tổng đơn hàng</div></div>
-      <div class="card stat"><div class="n" id="stNone">0</div><div class="t">Chưa giao</div></div>
-      <div class="card stat"><div class="n" id="stPart">0</div><div class="t">Đang giao</div></div>
-      <div class="card stat"><div class="n" id="stDone">0</div><div class="t">Đã giao hoàn thành</div></div>
-
-      <div id="adminPanel" class="card side hidden">
-        <h3>Tạo đơn đặt hàng</h3>
-        <form id="orderForm">
-          <div class="form-grid">
-            <div class="full"><label>Tên sản phẩm *</label><input id="productName" required></div>
-            <div><label>Mã sản phẩm</label><input id="productCode"></div>
-            <div><label>Số lượng *</label><input id="orderQty" type="number" min="1" step="1" required></div>
-            <div class="full"><label>Dùng cho model *</label><select id="modelSelect" required></select></div>
-            <div><label>Mã số báo giá</label><input id="quotationNo"></div>
-            <div><label>Mã PO</label><input id="poNo"></div>
-            <div class="full"><label>Ghi chú</label><textarea id="note"></textarea></div>
-          </div>
-          <button class="primary" type="submit" style="width:100%;margin-top:12px">Tạo đơn</button>
-          <div id="orderMsg"></div>
-        </form>
-
-        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
-        <h3>Tạo tài khoản</h3>
-        <form id="accountForm">
-          <div style="margin-bottom:10px">
-            <label>Loại tài khoản</label>
-            <select id="accRole">
-              <option value="supplier">Nhà cung cấp (không cần email)</option>
-              <option value="admin">Admin (cần email thật)</option>
-            </select>
-          </div>
-          <div id="accEmailWrap" style="margin-bottom:10px">
-            <label id="accIdentifierLabel">Tên đăng nhập</label>
-            <input id="accIdentifier" required placeholder="vd: nhacungcapA">
-          </div>
-          <div style="margin-bottom:10px">
-            <label>Mật khẩu (tối thiểu 6 ký tự)</label>
-            <input id="accPassword" type="text" required minlength="6">
-          </div>
-          <button class="primary" type="submit" style="width:100%">Tạo tài khoản</button>
-          <div id="accountMsg"></div>
-        </form>
-
-        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
-        <h3>Danh sách Model</h3>
-        <form id="modelForm" style="display:flex;gap:8px">
-          <input id="newModel" placeholder="Ví dụ: Pegasus" required>
-          <button class="primary small">Thêm</button>
-        </form>
-        <div id="modelList" style="margin-top:10px"></div>
-      </div>
-
-      <div class="card wide" id="ordersPanel">
-        <div class="toolbar">
-          <input id="searchBox" placeholder="Tìm sản phẩm / mã / PO / báo giá">
-          <select id="statusFilter">
-            <option value="">Tất cả trạng thái</option>
-            <option value="none">Chưa giao</option>
-            <option value="part">Đang giao</option>
-            <option value="done">Đã giao hoàn thành</option>
-          </select>
-          <select id="modelFilter"><option value="">Tất cả model</option></select>
-          <button id="exportBtn" class="secondary small">Xuất CSV</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>Báo giá</th><th>Sản phẩm</th><th>Mã SP</th><th>SL đặt</th><th>Model</th>
-              <th>PO</th><th>Đã giao</th><th>Còn lại</th><th>Trạng thái</th><th>Giao hàng</th><th>Ghi chú</th><th>Thao tác</th>
-            </tr></thead>
-            <tbody id="orderRows"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </section>
+  </div>
 </div>
 
-<dialog id="editDialog">
-  <form method="dialog" id="editForm">
-    <h3>Cập nhật đơn hàng</h3>
-    <input type="hidden" id="editId">
-    <div class="form-grid">
-      <div><label>Mã số báo giá</label><input id="editQuotationNo"></div>
-      <div><label>Mã sản phẩm</label><input id="editProductCode"></div>
-      <div><label>Mã PO</label><input id="editPoNo"></div>
-      <div class="full"><label>Ghi chú</label><textarea id="editNote"></textarea></div>
-      <div id="adminEditFields" class="full hidden">
-        <div class="form-grid">
-          <div class="full"><label>Tên sản phẩm</label><input id="editProductName"></div>
-          <div><label>Số lượng đặt</label><input id="editOrderQty" type="number" min="1" step="1"></div>
-          <div><label>Model</label><select id="editModel"></select></div>
-        </div>
-      </div>
+<!-- ================= APP VIEW ================= -->
+<div id="view-app" class="hidden min-h-screen flex">
+  <aside class="sidebar w-60 shrink-0 flex flex-col">
+    <div class="px-5 py-5 border-b" style="border-color:#26324A;">
+      <span class="brandmark">HOSIDEN</span>
+      <div class="text-xs mt-0.5" style="color:#8894AC;">Order Tracking</div>
     </div>
-    <div class="dialog-actions">
-      <button class="secondary" value="cancel">Hủy</button>
-      <button id="saveEditBtn" class="primary" value="default">Lưu</button>
+    <nav id="sidebar-nav" class="flex-1 px-3 py-4 space-y-1"></nav>
+    <div class="px-4 py-4 border-t" style="border-color:#26324A;">
+      <div id="sidebar-user" class="text-sm text-white font-medium"></div>
+      <div id="sidebar-role" class="text-xs mb-3" style="color:#8894AC;"></div>
+      <button id="logout-btn" class="text-xs navitem px-2 py-1.5 rounded w-full text-left">↩ Đăng xuất</button>
     </div>
-    <div id="editMsg"></div>
-  </form>
-</dialog>
+  </aside>
 
-<dialog id="deliveryDialog">
-  <form method="dialog" id="deliveryForm">
-    <h3>Ghi nhận giao hàng</h3>
-    <input type="hidden" id="deliveryOrderId">
-    <div id="deliverySummary" class="muted" style="margin-bottom:12px"></div>
-    <div class="form-grid">
-      <div><label>Ngày giao hàng *</label><input id="deliveryDate" type="date" required></div>
-      <div><label>Số lượng giao lần này *</label><input id="deliveryQty" type="number" min="1" step="1" required></div>
-      <div class="full"><label>Ghi chú lần giao</label><input id="deliveryNote"></div>
-    </div>
-    <div class="dialog-actions">
-      <button class="secondary" value="cancel">Hủy</button>
-      <button id="saveDeliveryBtn" class="primary" value="default">Lưu lần giao</button>
-    </div>
-    <div id="deliveryMsg"></div>
-    <div id="deliveryHistory" style="margin-top:12px"></div>
-  </form>
-</dialog>
+  <main class="flex-1 min-w-0">
+    <header class="bg-white border-b px-6 py-4 flex items-center justify-between" style="border-color:var(--line);">
+      <h1 id="page-title" class="text-lg font-bold"></h1>
+      <div id="page-actions" class="flex items-center gap-2"></div>
+    </header>
+    <div id="page-content" class="p-6"></div>
+  </main>
+</div>
 
-<script type="module">
-import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import {
-  getDatabase, ref, get, set, push, update, remove, onValue, runTransaction
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+<!-- ================= MODAL ROOT ================= -->
+<div id="modal-root"></div>
 
+<script>
+/* ========================================================================
+   FIREBASE INIT
+   ======================================================================== */
 const firebaseConfig = {
   apiKey: "AIzaSyCGzT4RjrGJ0TuQxKLvH0OtAOReP3Of0Aw",
   authDomain: "hosiden-osco.firebaseapp.com",
+  databaseURL: "https://hosiden-osco-default-rtdb.firebaseio.com",
   projectId: "hosiden-osco",
   storageBucket: "hosiden-osco.firebasestorage.app",
   messagingSenderId: "131184698612",
   appId: "1:131184698612:web:8327ee1787794a57cceaa1",
-  measurementId: "G-LWW2N93BNG",
-
-  // NẾU DATABASE CỦA BẠN Ở SINGAPORE, đổi thành:
-  // https://hosiden-osco-default-rtdb.asia-southeast1.firebasedatabase.app
-  databaseURL: "https://hosiden-osco-default-rtdb.firebaseio.com"
+  measurementId: "G-LWW2N93BNG"
 };
+const app = firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const EMAIL_SUFFIX = "@hosiden.local";
+const ADMIN_USERNAME = "admin";
+const ADMIN_DEFAULT_PW = "hvbg2025";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+function toEmail(username){ return username.trim().toLowerCase() + EMAIL_SUFFIX; }
 
-// Domain giả dùng để tạo tài khoản Firebase cho nhà cung cấp mà không cần email thật.
-// Nhà cung cấp chỉ cần nhớ "tên đăng nhập" + mật khẩu; hệ thống tự ghép thành email nội bộ này.
-const SUPPLIER_DOMAIN = "supplier.hosiden-osco.local";
-function toLoginEmail(input){
-  const v = input.trim();
-  return v.includes("@") ? v : `${v.toLowerCase().replace(/\s+/g,"")}@${SUPPLIER_DOMAIN}`;
-}
-function authErrorMessage(err){
-  const map = {
-    "auth/invalid-email":"Email/tên đăng nhập không hợp lệ.",
-    "auth/user-not-found":"Tài khoản không tồn tại.",
-    "auth/wrong-password":"Sai mật khẩu.",
-    "auth/invalid-credential":"Sai tên đăng nhập hoặc mật khẩu.",
-    "auth/invalid-login-credentials":"Sai tên đăng nhập hoặc mật khẩu.",
-    "auth/user-disabled":"Tài khoản đã bị vô hiệu hóa.",
-    "auth/too-many-requests":"Bạn đã thử sai quá nhiều lần. Vui lòng thử lại sau.",
-    "auth/network-request-failed":"Lỗi kết nối mạng. Kiểm tra Internet hoặc cấu hình Firebase.",
-    "auth/email-already-in-use":"Tên đăng nhập/email này đã được sử dụng.",
-    "auth/weak-password":"Mật khẩu quá yếu (tối thiểu 6 ký tự).",
-    "auth/operation-not-allowed":"Phương thức Email/Password chưa được bật trong Firebase Console."
-  };
-  const code = err && err.code;
-  return map[code] || (`Lỗi: ${err && err.message ? err.message : err}`);
-}
-
-const $ = id => document.getElementById(id);
+/* ========================================================================
+   STATE
+   ======================================================================== */
 let currentUser = null;
-let currentRole = "";
-let orders = {};
-let models = {};
+let currentProfile = null;   // {username, role, supplierName, disabled}
+let suppliers = {};          // uid -> profile   (admin only, live)
+let orders = {};             // orderId -> order (live, scoped by role)
+let currentPage = 'orders';
+let ordersListenerRef = null;
+let suppliersListenerRef = null;
 
-function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function showMsg(el,msg,type="error"){el.innerHTML=`<div class="${type}">${esc(msg)}</div>`;setTimeout(()=>el.innerHTML="",4000)}
-function deliveredQty(order){
-  return Object.values(order.deliveries || {}).reduce((s,d)=>s+(Number(d.qty)||0),0);
-}
-function statusOf(order){
-  const d=deliveredQty(order), q=Number(order.orderQty)||0;
-  if(d<=0) return "none";
-  if(d<q) return "part";
-  return "done";
-}
-function statusLabel(s){return s==="none"?"Chưa giao":s==="part"?"Đang giao":"Đã giao hoàn thành"}
-function statusClass(s){return s==="none"?"s-none":s==="part"?"s-part":"s-done"}
-function fmtDate(v){return v || "-"}
-function csvCell(v){return `"${String(v??"").replaceAll('"','""')}"`}
+/* ========================================================================
+   AUTH FLOW
+   ======================================================================== */
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
+const loginBtn = document.getElementById('login-btn');
 
-$("loginForm").addEventListener("submit", async e=>{
+function showLoginError(msg){
+  loginError.textContent = msg;
+  loginError.classList.remove('hidden');
+}
+function clearLoginError(){ loginError.classList.add('hidden'); }
+
+loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  clearLoginError();
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if(!username || !password) return;
+  loginBtn.disabled = true; loginBtn.textContent = 'Đang đăng nhập...';
   try{
-    const email = toLoginEmail($("loginEmail").value);
-    await signInWithEmailAndPassword(auth,email,$("loginPassword").value);
-  }catch(err){showMsg($("loginMsg"),"Đăng nhập thất bại: "+authErrorMessage(err))}
-});
-$("logoutBtn").onclick=()=>signOut(auth);
-
-onAuthStateChanged(auth, async user=>{
-  if(!user){
-    currentUser=null;currentRole="";
-    $("loginView").classList.remove("hidden");$("appView").classList.add("hidden");return;
-  }
-  currentUser=user;
-  try{
-    const snap=await get(ref(db,`users/${user.uid}`));
-    if(!snap.exists()) throw new Error("Tài khoản chưa được gán quyền trong Realtime Database.");
-    currentRole=snap.val().role;
-    if(!["admin","supplier"].includes(currentRole)) throw new Error("Role không hợp lệ.");
-    $("userEmail").textContent=user.email||user.uid;
-    $("userRole").textContent=currentRole==="admin"?"ADMIN":"NHÀ CUNG CẤP";
-    $("adminPanel").classList.toggle("hidden",currentRole!=="admin");
-    $("adminEditFields").classList.toggle("hidden",currentRole!=="admin");
-    $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
-    startListeners();
+    await doLogin(username, password);
   }catch(err){
-    showMsg($("loginMsg"),err.message);
-    await signOut(auth);
-  }
-});
-
-function startListeners(){
-  onValue(ref(db,"models"),snap=>{
-    models=snap.val()||{};
-    renderModels(); renderModelSelects(); renderOrders();
-  });
-  onValue(ref(db,"orders"),snap=>{
-    orders=snap.val()||{};
-    renderOrders();
-  });
-}
-
-$("accRole").addEventListener("change",()=>{
-  const isAdmin = $("accRole").value==="admin";
-  $("accIdentifierLabel").textContent = isAdmin ? "Email" : "Tên đăng nhập";
-  $("accIdentifier").placeholder = isAdmin ? "vd: [email protected]" : "vd: nhacungcapA";
-  $("accIdentifier").type = isAdmin ? "email" : "text";
-});
-
-$("accountForm").addEventListener("submit", async e=>{
-  e.preventDefault();
-  if(currentRole!=="admin") return;
-  const role = $("accRole").value;
-  const identifier = $("accIdentifier").value.trim();
-  const password = $("accPassword").value;
-  if(password.length<6) return showMsg($("accountMsg"),"Mật khẩu tối thiểu 6 ký tự.");
-  const loginEmail = role==="admin" ? identifier : toLoginEmail(identifier);
-
-  // Tạo tài khoản bằng một Firebase App phụ, tách biệt với phiên đăng nhập hiện tại của admin,
-  // để admin không bị tự động chuyển sang đăng nhập là tài khoản vừa tạo.
-  const secondaryApp = initializeApp(firebaseConfig, "secondary-"+Date.now());
-  const secondaryAuth = getAuth(secondaryApp);
-  try{
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, loginEmail, password);
-    await set(ref(db, `users/${cred.user.uid}`), {
-      role,
-      username: role==="supplier" ? identifier : "",
-      email: loginEmail,
-      createdAt: Date.now(),
-      createdBy: currentUser.uid
-    });
-    await signOut(secondaryAuth);
-    e.target.reset();
-    $("accRole").dispatchEvent(new Event("change"));
-    showMsg($("accountMsg"), role==="supplier"
-      ? `Đã tạo tài khoản. Nhà cung cấp đăng nhập bằng tên đăng nhập: "${identifier}"`
-      : "Đã tạo tài khoản admin.", "success");
-  }catch(err){
-    showMsg($("accountMsg"), authErrorMessage(err));
+    showLoginError(friendlyAuthError(err));
   }finally{
-    await deleteApp(secondaryApp);
+    loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập';
   }
 });
 
-$("modelForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  if(currentRole!=="admin") return;
-  const name=$("newModel").value.trim(); if(!name)return;
-  const r=push(ref(db,"models"));
-  await set(r,{name,createdAt:Date.now(),createdBy:currentUser.uid});
-  $("newModel").value="";
-});
-
-function renderModels(){
-  const el=$("modelList");el.innerHTML="";
-  if(currentRole!=="admin") return;
-  Object.entries(models).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||"")).forEach(([id,m])=>{
-    const row=document.createElement("div");
-    row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #e2e8f0";
-    row.innerHTML=`<span>${esc(m.name)}</span><button class="danger small" data-mid="${id}">Xóa</button>`;
-    row.querySelector("button").onclick=async()=>{
-      if(confirm(`Xóa model "${m.name}"?`)) await remove(ref(db,`models/${id}`));
-    };
-    el.appendChild(row);
-  });
-}
-function renderModelSelects(){
-  const sorted=Object.entries(models).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
-  for(const id of ["modelSelect","editModel"]){
-    const s=$(id); const old=s.value; s.innerHTML='<option value="">-- Chọn model --</option>';
-    sorted.forEach(([mid,m])=>s.insertAdjacentHTML("beforeend",`<option value="${mid}">${esc(m.name)}</option>`));
-    if([...s.options].some(o=>o.value===old))s.value=old;
-  }
-  const f=$("modelFilter"),old=f.value;
-  f.innerHTML='<option value="">Tất cả model</option>';
-  sorted.forEach(([mid,m])=>f.insertAdjacentHTML("beforeend",`<option value="${mid}">${esc(m.name)}</option>`));
-  if([...f.options].some(o=>o.value===old))f.value=old;
-}
-
-$("orderForm").addEventListener("submit",async e=>{
-  e.preventDefault(); if(currentRole!=="admin")return;
-  const qty=Number($("orderQty").value);
-  if(!Number.isInteger(qty)||qty<=0)return showMsg($("orderMsg"),"Số lượng phải là số nguyên lớn hơn 0.");
-  const obj={
-    quotationNo:$("quotationNo").value.trim(),
-    productName:$("productName").value.trim(),
-    productCode:$("productCode").value.trim(),
-    orderQty:qty,
-    modelId:$("modelSelect").value,
-    poNo:$("poNo").value.trim(),
-    note:$("note").value.trim(),
-    createdAt:Date.now(),createdBy:currentUser.uid
-  };
-  const r=push(ref(db,"orders"));await set(r,obj);
-  e.target.reset();showMsg($("orderMsg"),"Đã tạo đơn hàng.","success");
-});
-
-let searchDebounce;
-$("searchBox").addEventListener("input",()=>{
-  clearTimeout(searchDebounce);
-  searchDebounce=setTimeout(renderOrders,200);
-});
-["statusFilter","modelFilter"].forEach(id=>$(id).addEventListener("input",renderOrders));
-
-function renderOrders(){
-  const tbody=$("orderRows"); if(!tbody)return; tbody.innerHTML="";
-  const q=$("searchBox").value.trim().toLowerCase(), sf=$("statusFilter").value, mf=$("modelFilter").value;
-  let list=Object.entries(orders).map(([id,o])=>({id,...o}));
-  list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  list=list.filter(o=>{
-    const s=statusOf(o), hay=[o.quotationNo,o.productName,o.productCode,o.poNo,o.note].join(" ").toLowerCase();
-    return (!q||hay.includes(q))&&(!sf||s===sf)&&(!mf||o.modelId===mf);
-  });
-
-  let nNone=0,nPart=0,nDone=0;
-  Object.values(orders).forEach(o=>{const s=statusOf(o);if(s==="none")nNone++;else if(s==="part")nPart++;else nDone++});
-  $("stTotal").textContent=Object.keys(orders).length;$("stNone").textContent=nNone;$("stPart").textContent=nPart;$("stDone").textContent=nDone;
-
-  for(const o of list){
-    const d=deliveredQty(o), remaining=Math.max(0,Number(o.orderQty||0)-d), s=statusOf(o);
-    const deliveryText=Object.values(o.deliveries||{}).sort((a,b)=>(a.date||"").localeCompare(b.date||""))
-      .map(x=>`${fmtDate(x.date)}: ${Number(x.qty)||0}`).join("<br>")||"-";
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${esc(o.quotationNo||"-")}</td><td><b>${esc(o.productName||"")}</b></td><td>${esc(o.productCode||"-")}</td>
-      <td>${Number(o.orderQty)||0}</td><td>${esc(models[o.modelId]?.name||"-")}</td><td>${esc(o.poNo||"-")}</td>
-      <td><b>${d}</b></td><td>${remaining}</td><td><span class="status ${statusClass(s)}">${statusLabel(s)}</span></td>
-      <td>${deliveryText}</td><td>${esc(o.note||"-")}</td>
-      <td style="white-space:nowrap">
-        <button class="secondary small editBtn">Sửa</button>
-        <button class="primary small delivBtn">Giao hàng</button>
-        ${currentRole==="admin"?'<button class="danger small deleteBtn">Xóa</button>':""}
-      </td>`;
-    tr.querySelector(".editBtn").onclick=()=>openEdit(o.id);
-    tr.querySelector(".delivBtn").onclick=()=>openDelivery(o.id);
-    if(currentRole==="admin")tr.querySelector(".deleteBtn").onclick=async()=>{
-      if(confirm(`Xóa đơn "${o.productName}"?`))await remove(ref(db,`orders/${o.id}`));
-    };
-    tbody.appendChild(tr);
-  }
-}
-
-function openEdit(id){
-  const o=orders[id]; if(!o)return;
-  $("editId").value=id;$("editQuotationNo").value=o.quotationNo||"";$("editProductCode").value=o.productCode||"";
-  $("editPoNo").value=o.poNo||"";$("editNote").value=o.note||"";
-  $("editProductName").value=o.productName||"";$("editOrderQty").value=o.orderQty||"";$("editModel").value=o.modelId||"";
-  $("editDialog").showModal();
-}
-$("saveEditBtn").onclick=async e=>{
-  e.preventDefault();
-  const id=$("editId").value,o=orders[id];if(!o)return;
-  const patch={
-    quotationNo:$("editQuotationNo").value.trim(),
-    productCode:$("editProductCode").value.trim(),
-    poNo:$("editPoNo").value.trim(),
-    note:$("editNote").value.trim(),
-    updatedAt:Date.now(),updatedBy:currentUser.uid
-  };
-  if(currentRole==="admin"){
-    const newQty=Number($("editOrderQty").value), d=deliveredQty(o);
-    if(!Number.isInteger(newQty)||newQty<=0)return showMsg($("editMsg"),"Số lượng đặt không hợp lệ.");
-    if(newQty<d)return showMsg($("editMsg"),`Không thể giảm SL đặt xuống ${newQty} vì đã giao ${d}.`);
-    patch.productName=$("editProductName").value.trim();patch.orderQty=newQty;patch.modelId=$("editModel").value;
-  }
-  await update(ref(db,`orders/${id}`),patch);$("editDialog").close();
-};
-
-function openDelivery(id){
-  const o=orders[id]; if(!o)return;
-  $("deliveryOrderId").value=id;$("deliveryDate").value=new Date().toISOString().slice(0,10);$("deliveryQty").value="";$("deliveryNote").value="";
-  renderDeliveryHistory(id);$("deliveryDialog").showModal();
-}
-function renderDeliveryHistory(id){
-  const o=orders[id],d=deliveredQty(o),remaining=Math.max(0,Number(o.orderQty)-d);
-  $("deliverySummary").innerHTML=`<b>${esc(o.productName)}</b> • Đặt: ${o.orderQty} • Đã giao: ${d} • Còn lại: ${remaining}`;
-  const hist=$("deliveryHistory");hist.innerHTML="<b>Lịch sử giao hàng</b>";
-  const arr=Object.entries(o.deliveries||{}).sort((a,b)=>(b[1].date||"").localeCompare(a[1].date||""));
-  if(!arr.length)hist.insertAdjacentHTML("beforeend",'<div class="muted" style="margin-top:8px">Chưa có lần giao nào.</div>');
-  arr.forEach(([did,x])=>{
-    const div=document.createElement("div");div.className="delivery-item";
-    div.innerHTML=`<div><b>${esc(x.date)}</b> — SL: <b>${Number(x.qty)||0}</b></div><div class="muted">${esc(x.note||"")}</div>
-      <button class="danger small" style="margin-top:6px">Xóa lần giao</button>`;
-    div.querySelector("button").onclick=async()=>{
-      if(confirm("Xóa lần giao này?")){await remove(ref(db,`orders/${id}/deliveries/${did}`));renderDeliveryHistory(id)}
-    };
-    hist.appendChild(div);
-  });
-}
-$("saveDeliveryBtn").onclick=async e=>{
-  e.preventDefault();
-  const id=$("deliveryOrderId").value, qty=Number($("deliveryQty").value), date=$("deliveryDate").value;
-  if(!Number.isInteger(qty)||qty<=0||!date)return showMsg($("deliveryMsg"),"Nhập ngày giao và số lượng hợp lệ.");
-  const orderRef=ref(db,`orders/${id}`);
+async function doLogin(username, password){
+  const email = toEmail(username);
   try{
-    const result=await runTransaction(orderRef,order=>{
-      if(!order)return order;
-      const current=Object.values(order.deliveries||{}).reduce((s,d)=>s+(Number(d.qty)||0),0);
-      if(current+qty>Number(order.orderQty)) return; // abort
-      order.deliveries=order.deliveries||{};
-      const key=crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+"_"+Math.random().toString(36).slice(2);
-      order.deliveries[key]={date,qty,note:$("deliveryNote").value.trim(),createdAt:Date.now(),createdBy:currentUser.uid};
-      return order;
-    });
-    if(!result.committed)return showMsg($("deliveryMsg"),"Không thể lưu: tổng số giao sẽ lớn hơn số lượng đặt.");
-    $("deliveryDialog").close();
-  }catch(err){showMsg($("deliveryMsg"),err.message)}
-};
+    await auth.signInWithEmailAndPassword(email, password);
+  }catch(err){
+    // First-run bootstrap: allow the seeded admin account to self-create once.
+    if(err.code === 'auth/user-not-found' && username.toLowerCase() === ADMIN_USERNAME && password === ADMIN_DEFAULT_PW){
+      const cred = await auth.createUserWithEmailAndPassword(email, password);
+      await db.ref('users/' + cred.user.uid).set({
+        username: ADMIN_USERNAME, role: 'admin', disabled: false, createdAt: Date.now()
+      });
+      return;
+    }
+    throw err;
+  }
+}
 
-$("exportBtn").onclick=()=>{
-  const header=["Mã báo giá","Tên sản phẩm","Mã sản phẩm","SL đặt","Model","Mã PO","Đã giao","Còn lại","Trạng thái","Ghi chú","Chi tiết giao"];
-  const rows=[header.map(csvCell).join(",")];
-  Object.entries(orders).forEach(([id,o])=>{
-    const d=deliveredQty(o),detail=Object.values(o.deliveries||{}).map(x=>`${x.date}:${x.qty}`).join(" | ");
-    rows.push([o.quotationNo,o.productName,o.productCode,o.orderQty,models[o.modelId]?.name||"",o.poNo,d,Math.max(0,o.orderQty-d),statusLabel(statusOf(o)),o.note,detail].map(csvCell).join(","));
+function friendlyAuthError(err){
+  const map = {
+    'auth/user-not-found': 'Tài khoản không tồn tại.',
+    'auth/wrong-password': 'Sai mật khẩu.',
+    'auth/invalid-credential': 'Tài khoản hoặc mật khẩu không đúng.',
+    'auth/invalid-email': 'Tên tài khoản không hợp lệ.',
+    'auth/too-many-requests': 'Đăng nhập sai quá nhiều lần, vui lòng thử lại sau.'
+  };
+  return map[err.code] || ('Đăng nhập thất bại: ' + err.message);
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+
+auth.onAuthStateChanged(async (user) => {
+  detachListeners();
+  if(!user){
+    currentUser = null; currentProfile = null;
+    document.getElementById('view-app').classList.add('hidden');
+    document.getElementById('view-login').classList.remove('hidden');
+    return;
+  }
+  currentUser = user;
+  try{
+    const snap = await db.ref('users/' + user.uid).once('value');
+    const profile = snap.val();
+    if(!profile){
+      showLoginError('Không tìm thấy hồ sơ người dùng. Liên hệ quản trị viên.');
+      await auth.signOut();
+      return;
+    }
+    if(profile.disabled){
+      showLoginError('Tài khoản của bạn đã bị vô hiệu hoá.');
+      await auth.signOut();
+      return;
+    }
+    currentProfile = profile;
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-app').classList.remove('hidden');
+    initAppShell();
+  }catch(err){
+    console.error(err);
+    showLoginError('Có lỗi xảy ra khi tải hồ sơ người dùng.');
+  }
+});
+
+function detachListeners(){
+  if(ordersListenerRef) ordersListenerRef.off();
+  if(suppliersListenerRef) suppliersListenerRef.off();
+  orders = {}; suppliers = {};
+}
+
+/* ========================================================================
+   APP SHELL / NAVIGATION
+   ======================================================================== */
+function initAppShell(){
+  document.getElementById('sidebar-user').textContent = currentProfile.role === 'admin' ? 'Admin' : currentProfile.supplierName;
+  document.getElementById('sidebar-role').textContent = currentProfile.role === 'admin' ? 'Quản trị viên' : 'Nhà cung cấp · ' + currentProfile.username;
+
+  const nav = document.getElementById('sidebar-nav');
+  const pages = currentProfile.role === 'admin'
+    ? [['orders','📦 Đơn hàng'],['suppliers','🏭 Nhà cung cấp'],['reports','📊 Báo cáo']]
+    : [['orders','📦 Đơn hàng của tôi']];
+  nav.innerHTML = pages.map(([key,label]) =>
+    `<button data-page="${key}" class="navitem w-full text-left px-3 py-2 rounded-md text-sm font-medium">${label}</button>`
+  ).join('');
+  nav.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => setPage(btn.dataset.page)));
+
+  attachOrdersListener();
+  if(currentProfile.role === 'admin') attachSuppliersListener();
+
+  setPage('orders');
+}
+
+function setPage(page){
+  currentPage = page;
+  document.querySelectorAll('#sidebar-nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  if(page === 'orders') renderOrdersPage();
+  else if(page === 'suppliers') renderSuppliersPage();
+  else if(page === 'reports') renderReportsPage();
+}
+
+/* ========================================================================
+   DATA LISTENERS
+   ======================================================================== */
+function attachOrdersListener(){
+  if(currentProfile.role === 'admin'){
+    ordersListenerRef = db.ref('orders');
+  }else{
+    ordersListenerRef = db.ref('orders').orderByChild('supplierUid').equalTo(currentUser.uid);
+  }
+  ordersListenerRef.on('value', snap => {
+    orders = snap.val() || {};
+    if(currentPage === 'orders') renderOrdersPage();
+    if(currentPage === 'reports') renderReportsPage();
   });
-  const blob=new Blob(["\uFEFF"+rows.join("\n")],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`orders_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
-};
+}
+
+function attachSuppliersListener(){
+  suppliersListenerRef = db.ref('users').orderByChild('role').equalTo('supplier');
+  suppliersListenerRef.on('value', snap => {
+    suppliers = snap.val() || {};
+    if(currentPage === 'suppliers') renderSuppliersPage();
+    if(currentPage === 'orders') renderOrdersPage();
+  });
+}
+
+/* ========================================================================
+   HELPERS
+   ======================================================================== */
+function fmtMonth(m){ // "2026-09" -> "Tháng 9/2026"
+  if(!m) return '—';
+  const [y, mo] = m.split('-');
+  return `Tháng ${parseInt(mo,10)}/${y}`;
+}
+function quarterOf(m){
+  const mo = parseInt(m.split('-')[1],10);
+  return Math.ceil(mo/3);
+}
+function yearOf(m){ return m.split('-')[0]; }
+
+function totalDelivered(order){
+  if(!order.deliveries) return 0;
+  return Object.values(order.deliveries).reduce((s,d) => s + (Number(d.qty)||0), 0);
+}
+function orderStatus(order){
+  const d = totalDelivered(order);
+  const q = Number(order.quantity)||0;
+  if(d <= 0) return {key:'none', label:'Chưa giao', cls:'badge-none'};
+  if(d < q) return {key:'partial', label:'Giao một phần', cls:'badge-partial'};
+  return {key:'full', label:'Đã giao đủ', cls:'badge-full'};
+}
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function ordersArray(){
+  return Object.entries(orders).map(([id,o]) => ({id, ...o}));
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+/* ========================================================================
+   MODAL UTIL
+   ======================================================================== */
+function openModal(html){
+  document.getElementById('modal-root').innerHTML = `
+    <div class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4" id="modal-overlay">
+      <div class="fade-in bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">${html}</div>
+    </div>`;
+  document.getElementById('modal-overlay').addEventListener('click', (e) => {
+    if(e.target.id === 'modal-overlay') closeModal();
+  });
+}
+function closeModal(){ document.getElementById('modal-root').innerHTML = ''; }
+
+/* ========================================================================
+   PAGE: ORDERS
+   ======================================================================== */
+let ordersFilter = { month:'', supplierUid:'', status:'', q:'' };
+
+function renderOrdersPage(){
+  document.getElementById('page-title').textContent = currentProfile.role === 'admin' ? 'Đơn hàng' : 'Đơn hàng của tôi';
+
+  const actions = document.getElementById('page-actions');
+  actions.innerHTML = `
+    ${currentProfile.role === 'admin' ? `<button id="btn-new-order" class="btn-primary rounded-md px-3.5 py-2 text-sm font-semibold">+ Tạo đơn hàng</button>` : ''}
+    <button id="btn-export-orders" class="btn-outline rounded-md px-3.5 py-2 text-sm font-semibold">⬇ Xuất Excel</button>
+  `;
+  if(currentProfile.role === 'admin'){
+    document.getElementById('btn-new-order').addEventListener('click', openCreateOrderModal);
+  }
+  document.getElementById('btn-export-orders').addEventListener('click', () => exportOrdersToExcel(filteredOrders(), 'Danh_sach_don_hang'));
+
+  const list = filteredOrders();
+  const stats = computeQuickStats(ordersArray());
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      ${statCard('Tổng số đơn', stats.total, 'var(--ink)')}
+      ${statCard('Chưa giao', stats.none, 'var(--red)')}
+      ${statCard('Giao một phần', stats.partial, 'var(--amber)')}
+      ${statCard('Đã giao đủ', stats.full, 'var(--green)')}
+    </div>
+
+    <div class="panel rounded-lg p-3 mb-4 flex flex-wrap gap-2 items-end">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Tháng</label>
+        <input type="month" id="f-month" value="${ordersFilter.month}" class="text-sm">
+      </div>
+      ${currentProfile.role === 'admin' ? `
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Nhà cung cấp</label>
+        <select id="f-supplier" class="text-sm">
+          <option value="">Tất cả</option>
+          ${Object.entries(suppliers).map(([uid,s]) => `<option value="${uid}" ${ordersFilter.supplierUid===uid?'selected':''}>${esc(s.supplierName)}</option>`).join('')}
+        </select>
+      </div>` : ''}
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Trạng thái</label>
+        <select id="f-status" class="text-sm">
+          <option value="">Tất cả</option>
+          <option value="none" ${ordersFilter.status==='none'?'selected':''}>Chưa giao</option>
+          <option value="partial" ${ordersFilter.status==='partial'?'selected':''}>Giao một phần</option>
+          <option value="full" ${ordersFilter.status==='full'?'selected':''}>Đã giao đủ</option>
+        </select>
+      </div>
+      <div class="flex-1 min-w-[160px]">
+        <label class="block text-xs text-slate-500 mb-1">Tìm kiếm</label>
+        <input type="text" id="f-q" value="${esc(ordersFilter.q)}" placeholder="Tên/mã vật tư, mã PO, mã báo giá..." class="text-sm w-full">
+      </div>
+      <button id="f-clear" class="btn-outline rounded-md px-3 py-2 text-sm">Xoá lọc</button>
+    </div>
+
+    <div class="panel rounded-lg overflow-x-auto">
+      <table class="data w-full">
+        <thead><tr>
+          <th>Tháng</th>
+          ${currentProfile.role === 'admin' ? '<th>Nhà cung cấp</th>' : ''}
+          <th>Tên vật tư</th>
+          <th>Mã vật tư</th>
+          <th>Mã báo giá</th>
+          <th>Mã PO</th>
+          <th class="text-right">SL đặt</th>
+          <th class="text-right">SL đã giao</th>
+          <th>Trạng thái</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${list.length ? list.map(rowOrderHtml).join('') : `<tr><td colspan="10" class="text-center text-slate-400 py-8">Chưa có đơn hàng nào phù hợp.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('f-month').addEventListener('change', e => { ordersFilter.month = e.target.value; renderOrdersPage(); });
+  if(currentProfile.role === 'admin'){
+    document.getElementById('f-supplier').addEventListener('change', e => { ordersFilter.supplierUid = e.target.value; renderOrdersPage(); });
+  }
+  document.getElementById('f-status').addEventListener('change', e => { ordersFilter.status = e.target.value; renderOrdersPage(); });
+  document.getElementById('f-q').addEventListener('input', e => { ordersFilter.q = e.target.value; renderOrdersPage(); });
+  document.getElementById('f-clear').addEventListener('click', () => { ordersFilter = {month:'',supplierUid:'',status:'',q:''}; renderOrdersPage(); });
+
+  list.forEach(o => {
+    const openBtn = document.getElementById('open-'+o.id);
+    if(openBtn) openBtn.addEventListener('click', () => openOrderDetailModal(o.id));
+  });
+}
+
+function statCard(label, value, color){
+  return `<div class="panel rounded-lg p-4">
+    <div class="text-xs text-slate-500 font-medium">${label}</div>
+    <div class="text-2xl font-extrabold mt-1" style="color:${color}">${value}</div>
+  </div>`;
+}
+
+function computeQuickStats(list){
+  const s = {total:list.length, none:0, partial:0, full:0};
+  list.forEach(o => { s[orderStatus(o).key]++; });
+  return s;
+}
+
+function filteredOrders(){
+  return ordersArray().filter(o => {
+    if(ordersFilter.month && o.month !== ordersFilter.month) return false;
+    if(ordersFilter.supplierUid && o.supplierUid !== ordersFilter.supplierUid) return false;
+    if(ordersFilter.status && orderStatus(o).key !== ordersFilter.status) return false;
+    if(ordersFilter.q){
+      const q = ordersFilter.q.toLowerCase();
+      const hay = [o.materialName,o.materialCode,o.quoteCode,o.poCode].map(x=>(x||'').toLowerCase()).join(' ');
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+}
+
+function rowOrderHtml(o){
+  const st = orderStatus(o);
+  return `<tr>
+    <td>${fmtMonth(o.month)}</td>
+    ${currentProfile.role === 'admin' ? `<td>${esc(o.supplierName)}</td>` : ''}
+    <td class="font-medium">${esc(o.materialName)}</td>
+    <td class="mono">${esc(o.materialCode) || '<span class="text-slate-300">—</span>'}</td>
+    <td class="mono">${esc(o.quoteCode) || '<span class="text-slate-300">—</span>'}</td>
+    <td class="mono">${esc(o.poCode) || '<span class="text-slate-300">—</span>'}</td>
+    <td class="text-right">${o.quantity}</td>
+    <td class="text-right">${totalDelivered(o)}</td>
+    <td><span class="badge ${st.cls}">${st.label}</span></td>
+    <td><span id="open-${o.id}" class="link-btn text-xs">Chi tiết</span></td>
+  </tr>`;
+}
+
+/* ---- Create order (admin) ---- */
+function openCreateOrderModal(){
+  const supplierOptions = Object.entries(suppliers).map(([uid,s]) => `<option value="${uid}">${esc(s.supplierName)}</option>`).join('');
+  openModal(`
+    <div class="p-5">
+      <h2 class="text-base font-bold mb-4">Tạo đơn hàng mới</h2>
+      <form id="create-order-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Tháng *</label>
+          <input type="month" id="co-month" required class="w-full" value="${new Date().toISOString().slice(0,7)}">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Nhà cung cấp *</label>
+          <select id="co-supplier" required class="w-full">
+            <option value="">-- Chọn nhà cung cấp --</option>
+            ${supplierOptions}
+          </select>
+          ${Object.keys(suppliers).length === 0 ? '<p class="text-xs mt-1" style="color:var(--red)">Chưa có nhà cung cấp nào. Vào mục "Nhà cung cấp" để tạo trước.</p>' : ''}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Tên vật tư *</label>
+          <input type="text" id="co-name" required class="w-full" placeholder="vd: Connector 2.0mm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Mã vật tư</label>
+          <input type="text" id="co-code" class="w-full mono" placeholder="Có thể để nhà cung cấp bổ sung sau">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Số lượng *</label>
+          <input type="number" id="co-qty" required min="1" step="1" class="w-full" placeholder="0">
+        </div>
+        <div id="co-error" class="hidden text-sm rounded px-3 py-2" style="background:var(--red-bg); color:var(--red);"></div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal()" class="btn-outline rounded-md px-4 py-2 text-sm">Huỷ</button>
+          <button type="submit" class="btn-primary rounded-md px-4 py-2 text-sm font-semibold">Tạo đơn</button>
+        </div>
+      </form>
+    </div>
+  `);
+  document.getElementById('create-order-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const supplierUid = document.getElementById('co-supplier').value;
+    if(!supplierUid){ showFormError('co-error','Vui lòng chọn nhà cung cấp.'); return; }
+    const order = {
+      month: document.getElementById('co-month').value,
+      supplierUid,
+      supplierName: suppliers[supplierUid].supplierName,
+      materialName: document.getElementById('co-name').value.trim(),
+      materialCode: document.getElementById('co-code').value.trim(),
+      quantity: Number(document.getElementById('co-qty').value),
+      quoteCode: '', poCode: '',
+      createdAt: Date.now(), createdBy: currentUser.uid
+    };
+    try{
+      await db.ref('orders').push(order);
+      closeModal();
+    }catch(err){ showFormError('co-error', 'Lỗi: ' + err.message); }
+  });
+}
+function showFormError(id, msg){
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.remove('hidden');
+}
+
+/* ---- Order detail modal (view/edit/deliveries) ---- */
+function openOrderDetailModal(orderId){
+  const o = orders[orderId];
+  if(!o) return;
+  const isAdmin = currentProfile.role === 'admin';
+  const delivered = totalDelivered(o);
+  const remaining = Number(o.quantity) - delivered;
+  const st = orderStatus(o);
+  const deliveries = o.deliveries ? Object.entries(o.deliveries).sort((a,b)=> (a[1].date||'').localeCompare(b[1].date||'')) : [];
+
+  openModal(`
+    <div class="p-5">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-base font-bold">${esc(o.materialName)}</h2>
+          <div class="text-xs text-slate-500 mt-0.5">${fmtMonth(o.month)} · ${esc(o.supplierName)}</div>
+        </div>
+        <span class="badge ${st.cls}">${st.label}</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Mã vật tư</label>
+          <input type="text" id="od-code" class="w-full mono" value="${esc(o.materialCode)||''}" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Số lượng đặt</label>
+          <input type="number" id="od-qty" class="w-full" value="${o.quantity}" min="${delivered}" step="1" ${isAdmin?'':'disabled'}></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Mã báo giá</label>
+          <input type="text" id="od-quote" class="w-full mono" value="${esc(o.quoteCode)||''}" placeholder="Nhà cung cấp nhập" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Mã PO</label>
+          <input type="text" id="od-po" class="w-full mono" value="${esc(o.poCode)||''}" placeholder="Nhà cung cấp nhập" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
+      </div>
+      <div id="od-error" class="hidden text-sm rounded px-3 py-2 mb-3" style="background:var(--red-bg); color:var(--red);"></div>
+      <div class="flex justify-end gap-2 mb-5">
+        ${isAdmin ? `<button id="od-delete" class="btn-danger rounded-md px-3 py-1.5 text-xs font-semibold">Xoá đơn</button>` : ''}
+        <button id="od-save" class="btn-primary rounded-md px-3 py-1.5 text-xs font-semibold">Lưu thay đổi</button>
+      </div>
+
+      <div class="border-t pt-4" style="border-color:var(--line);">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-bold">Lịch sử giao hàng</h3>
+          <div class="text-xs text-slate-500">Còn lại: <span class="font-semibold" style="color:var(--ink)">${remaining}</span> / ${o.quantity}</div>
+        </div>
+        <table class="data w-full mb-3">
+          <thead><tr><th>Ngày giao</th><th class="text-right">Số lượng</th><th>Ghi chú</th><th></th></tr></thead>
+          <tbody>
+            ${deliveries.length ? deliveries.map(([did,d]) => `
+              <tr>
+                <td>${d.date}</td>
+                <td class="text-right">${d.qty}</td>
+                <td class="text-slate-500">${esc(d.note)||''}</td>
+                <td><span class="link-btn text-xs del-delivery" data-did="${did}" style="color:var(--red)">Xoá</span></td>
+              </tr>`).join('') : `<tr><td colspan="4" class="text-center text-slate-400 py-4">Chưa có lần giao nào.</td></tr>`}
+          </tbody>
+        </table>
+        ${remaining > 0 ? `
+        <form id="add-delivery-form" class="flex flex-wrap items-end gap-2">
+          <div><label class="block text-xs text-slate-500 mb-1">Ngày giao</label><input type="date" id="dv-date" required value="${todayISO()}"></div>
+          <div><label class="block text-xs text-slate-500 mb-1">Số lượng (tối đa ${remaining})</label><input type="number" id="dv-qty" required min="1" max="${remaining}" step="1" class="w-28"></div>
+          <div class="flex-1 min-w-[120px]"><label class="block text-xs text-slate-500 mb-1">Ghi chú</label><input type="text" id="dv-note" class="w-full"></div>
+          <button type="submit" class="btn-primary rounded-md px-3 py-2 text-xs font-semibold">+ Ghi nhận giao hàng</button>
+        </form>` : `<p class="text-xs" style="color:var(--green)">✓ Đã giao đủ số lượng đặt.</p>`}
+      </div>
+
+      <div class="flex justify-end pt-4">
+        <button onclick="closeModal()" class="btn-outline rounded-md px-4 py-2 text-sm">Đóng</button>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('od-save').addEventListener('click', async () => {
+    const newQty = isAdmin ? Number(document.getElementById('od-qty').value) : o.quantity;
+    if(newQty < delivered){ showFormError('od-error', 'Số lượng đặt không thể nhỏ hơn số lượng đã giao.'); return; }
+    const updates = {
+      materialCode: document.getElementById('od-code').value.trim(),
+      quoteCode: document.getElementById('od-quote').value.trim(),
+      poCode: document.getElementById('od-po').value.trim(),
+      quantity: newQty
+    };
+    try{
+      await db.ref('orders/'+orderId).update(updates);
+      closeModal();
+    }catch(err){ showFormError('od-error','Lỗi: '+err.message); }
+  });
+
+  if(isAdmin){
+    document.getElementById('od-delete').addEventListener('click', async () => {
+      if(!confirm('Xoá đơn hàng này? Toàn bộ lịch sử giao hàng cũng sẽ bị xoá.')) return;
+      await db.ref('orders/'+orderId).remove();
+      closeModal();
+    });
+  }
+
+  document.querySelectorAll('.del-delivery').forEach(el => {
+    el.addEventListener('click', async () => {
+      if(!confirm('Xoá lần giao hàng này?')) return;
+      await db.ref(`orders/${orderId}/deliveries/${el.dataset.did}`).remove();
+      openOrderDetailModal(orderId); // refresh
+    });
+  });
+
+  const addForm = document.getElementById('add-delivery-form');
+  if(addForm){
+    addForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const qty = Number(document.getElementById('dv-qty').value);
+      const curDelivered = totalDelivered(orders[orderId]);
+      if(qty + curDelivered > Number(orders[orderId].quantity)){
+        showFormError('od-error', 'Tổng số lượng giao vượt quá số lượng đặt.');
+        return;
+      }
+      await db.ref(`orders/${orderId}/deliveries`).push({
+        date: document.getElementById('dv-date').value,
+        qty, note: document.getElementById('dv-note').value.trim(),
+        createdAt: Date.now()
+      });
+      openOrderDetailModal(orderId); // refresh with updated remaining
+    });
+  }
+}
+
+/* ========================================================================
+   PAGE: SUPPLIERS (admin only)
+   ======================================================================== */
+function renderSuppliersPage(){
+  document.getElementById('page-title').textContent = 'Nhà cung cấp';
+  document.getElementById('page-actions').innerHTML = `<button id="btn-new-supplier" class="btn-primary rounded-md px-3.5 py-2 text-sm font-semibold">+ Tạo tài khoản NCC</button>`;
+  document.getElementById('btn-new-supplier').addEventListener('click', openCreateSupplierModal);
+
+  const list = Object.entries(suppliers);
+  document.getElementById('page-content').innerHTML = `
+    <div class="panel rounded-lg overflow-x-auto">
+      <table class="data w-full">
+        <thead><tr><th>Tên nhà cung cấp</th><th>Tài khoản đăng nhập</th><th class="text-right">Số đơn hàng</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+          ${list.length ? list.map(([uid,s]) => {
+            const cnt = ordersArray().filter(o => o.supplierUid === uid).length;
+            return `<tr>
+              <td class="font-medium">${esc(s.supplierName)}</td>
+              <td class="mono">${esc(s.username)}</td>
+              <td class="text-right">${cnt}</td>
+              <td>${s.disabled ? `<span class="badge badge-none">Đã khoá</span>` : `<span class="badge badge-full">Đang hoạt động</span>`}</td>
+              <td><span class="link-btn text-xs toggle-supplier" data-uid="${uid}" data-disabled="${!!s.disabled}">${s.disabled ? 'Mở khoá' : 'Khoá tài khoản'}</span></td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="5" class="text-center text-slate-400 py-8">Chưa có nhà cung cấp nào.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-slate-400 mt-3">Lưu ý: để đổi mật khẩu hoặc xoá hẳn một tài khoản nhà cung cấp, thực hiện trong Firebase Console › Authentication.</p>
+  `;
+  document.querySelectorAll('.toggle-supplier').forEach(el => {
+    el.addEventListener('click', async () => {
+      const uid = el.dataset.uid;
+      const isDisabled = el.dataset.disabled === 'true';
+      await db.ref('users/'+uid+'/disabled').set(!isDisabled);
+    });
+  });
+}
+
+function openCreateSupplierModal(){
+  openModal(`
+    <div class="p-5">
+      <h2 class="text-base font-bold mb-4">Tạo tài khoản nhà cung cấp</h2>
+      <form id="create-supplier-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Tên nhà cung cấp *</label>
+          <input type="text" id="cs-name" required class="w-full" placeholder="vd: Công ty TNHH ABC">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Tài khoản đăng nhập *</label>
+          <input type="text" id="cs-username" required class="w-full" placeholder="vd: abc_supplier">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Mật khẩu *</label>
+          <input type="text" id="cs-password" required minlength="6" class="w-full" placeholder="Tối thiểu 6 ký tự">
+        </div>
+        <div id="cs-error" class="hidden text-sm rounded px-3 py-2" style="background:var(--red-bg); color:var(--red);"></div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal()" class="btn-outline rounded-md px-4 py-2 text-sm">Huỷ</button>
+          <button type="submit" id="cs-submit" class="btn-primary rounded-md px-4 py-2 text-sm font-semibold">Tạo tài khoản</button>
+        </div>
+      </form>
+    </div>
+  `);
+  document.getElementById('create-supplier-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('cs-submit');
+    submitBtn.disabled = true; submitBtn.textContent = 'Đang tạo...';
+    const supplierName = document.getElementById('cs-name').value.trim();
+    const username = document.getElementById('cs-username').value.trim();
+    const password = document.getElementById('cs-password').value;
+    // Use a secondary Firebase app instance so creating this account
+    // doesn't sign the admin out of their own session.
+    let secondaryApp;
+    try{
+      secondaryApp = firebase.apps.find(a => a.name === 'Secondary') || firebase.initializeApp(firebaseConfig, 'Secondary');
+      const cred = await secondaryApp.auth().createUserWithEmailAndPassword(toEmail(username), password);
+      await db.ref('users/'+cred.user.uid).set({
+        username, role: 'supplier', supplierName, disabled: false, createdAt: Date.now()
+      });
+      await secondaryApp.auth().signOut();
+      closeModal();
+    }catch(err){
+      const map = {'auth/email-already-in-use':'Tài khoản này đã tồn tại.', 'auth/weak-password':'Mật khẩu quá yếu (tối thiểu 6 ký tự).'};
+      showFormError('cs-error', map[err.code] || ('Lỗi: '+err.message));
+      submitBtn.disabled = false; submitBtn.textContent = 'Tạo tài khoản';
+    }
+  });
+}
+
+/* ========================================================================
+   PAGE: REPORTS (admin only)
+   ======================================================================== */
+let reportPeriod = 'month'; // month | quarter | year
+let reportChart = null;
+
+function renderReportsPage(){
+  document.getElementById('page-title').textContent = 'Báo cáo tổng hợp';
+  document.getElementById('page-actions').innerHTML = `<button id="btn-export-report" class="btn-outline rounded-md px-3.5 py-2 text-sm font-semibold">⬇ Xuất Excel</button>`;
+
+  const groups = buildReportGroups(reportPeriod);
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="panel rounded-lg p-3 mb-4 flex gap-2">
+      ${['month','quarter','year'].map(p => `<button data-p="${p}" class="rp-btn text-sm px-3 py-1.5 rounded-md font-medium ${reportPeriod===p ? 'btn-primary' : 'btn-outline'}">${p==='month'?'Theo tháng':p==='quarter'?'Theo quý':'Theo năm'}</button>`).join('')}
+    </div>
+
+    <div class="panel rounded-lg p-4 mb-4">
+      <canvas id="report-chart" height="90"></canvas>
+    </div>
+
+    <div class="panel rounded-lg overflow-x-auto">
+      <table class="data w-full">
+        <thead><tr>
+          <th>Kỳ</th><th>Nhà cung cấp</th><th class="text-right">Số đơn</th><th class="text-right">SL đặt</th><th class="text-right">SL đã giao</th><th class="text-right">Tỉ lệ hoàn thành</th>
+        </tr></thead>
+        <tbody>
+          ${groups.rows.length ? groups.rows.map(r => `<tr>
+            <td>${r.periodLabel}</td>
+            <td>${esc(r.supplierName)}</td>
+            <td class="text-right">${r.count}</td>
+            <td class="text-right">${r.qty}</td>
+            <td class="text-right">${r.delivered}</td>
+            <td class="text-right">${r.qty ? Math.round(r.delivered/r.qty*100) : 0}%</td>
+          </tr>`).join('') : `<tr><td colspan="6" class="text-center text-slate-400 py-8">Chưa có dữ liệu.</td></tr>`}
+        </tbody>
+        ${groups.rows.length ? `<tfoot><tr class="font-bold">
+          <td colspan="2">Tổng cộng</td>
+          <td class="text-right">${groups.totals.count}</td>
+          <td class="text-right">${groups.totals.qty}</td>
+          <td class="text-right">${groups.totals.delivered}</td>
+          <td class="text-right">${groups.totals.qty ? Math.round(groups.totals.delivered/groups.totals.qty*100) : 0}%</td>
+        </tr></tfoot>` : ''}
+      </table>
+    </div>
+  `;
+
+  document.querySelectorAll('.rp-btn').forEach(b => b.addEventListener('click', () => { reportPeriod = b.dataset.p; renderReportsPage(); }));
+  document.getElementById('btn-export-report').addEventListener('click', () => exportReportToExcel(groups));
+
+  drawReportChart(groups);
+}
+
+function periodKeyAndLabel(o, period){
+  if(period === 'month') return [o.month, fmtMonth(o.month)];
+  if(period === 'quarter') return [yearOf(o.month)+'-Q'+quarterOf(o.month), 'Quý '+quarterOf(o.month)+'/'+yearOf(o.month)];
+  return [yearOf(o.month), 'Năm '+yearOf(o.month)];
+}
+
+function buildReportGroups(period){
+  const map = {}; // key(period+supplier) -> row
+  const totals = {count:0, qty:0, delivered:0};
+  ordersArray().forEach(o => {
+    if(!o.month) return;
+    const [pKey, pLabel] = periodKeyAndLabel(o, period);
+    const key = pKey + '|' + o.supplierUid;
+    if(!map[key]) map[key] = {periodKey:pKey, periodLabel:pLabel, supplierName:o.supplierName, count:0, qty:0, delivered:0};
+    map[key].count++;
+    map[key].qty += Number(o.quantity)||0;
+    map[key].delivered += totalDelivered(o);
+    totals.count++; totals.qty += Number(o.quantity)||0; totals.delivered += totalDelivered(o);
+  });
+  const rows = Object.values(map).sort((a,b) => a.periodKey.localeCompare(b.periodKey) || a.supplierName.localeCompare(b.supplierName));
+  return {rows, totals};
+}
+
+function drawReportChart(groups){
+  const byPeriod = {};
+  groups.rows.forEach(r => {
+    byPeriod[r.periodLabel] = byPeriod[r.periodLabel] || {qty:0, delivered:0};
+    byPeriod[r.periodLabel].qty += r.qty;
+    byPeriod[r.periodLabel].delivered += r.delivered;
+  });
+  const labels = Object.keys(byPeriod);
+  const ctx = document.getElementById('report-chart');
+  if(reportChart) reportChart.destroy();
+  reportChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label: 'Số lượng đặt', data: labels.map(l=>byPeriod[l].qty), backgroundColor: '#3D6B94'},
+        {label: 'Số lượng đã giao', data: labels.map(l=>byPeriod[l].delivered), backgroundColor: '#2F7D53'}
+      ]
+    },
+    options: { responsive:true, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true}} }
+  });
+}
+
+/* ========================================================================
+   EXCEL EXPORT
+   ======================================================================== */
+function exportOrdersToExcel(list, filenameBase){
+  const rows = list.map(o => ({
+    'Tháng': fmtMonth(o.month),
+    'Nhà cung cấp': o.supplierName,
+    'Tên vật tư': o.materialName,
+    'Mã vật tư': o.materialCode || '',
+    'Mã báo giá': o.quoteCode || '',
+    'Mã PO': o.poCode || '',
+    'Số lượng đặt': o.quantity,
+    'Số lượng đã giao': totalDelivered(o),
+    'Trạng thái': orderStatus(o).label,
+    'Chi tiết các lần giao': o.deliveries ? Object.values(o.deliveries).map(d => `${d.date}: ${d.qty}${d.note ? ' ('+d.note+')' : ''}`).join(' | ') : ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Đơn hàng');
+  XLSX.writeFile(wb, `${filenameBase}_${todayISO()}.xlsx`);
+}
+
+function exportReportToExcel(groups){
+  const rows = groups.rows.map(r => ({
+    'Kỳ': r.periodLabel, 'Nhà cung cấp': r.supplierName, 'Số đơn': r.count,
+    'SL đặt': r.qty, 'SL đã giao': r.delivered,
+    'Tỉ lệ hoàn thành (%)': r.qty ? Math.round(r.delivered/r.qty*100) : 0
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo');
+  XLSX.writeFile(wb, `Bao_cao_tong_hop_${todayISO()}.xlsx`);
+}
 </script>
 </body>
 </html>
