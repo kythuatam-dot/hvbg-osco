@@ -34,7 +34,7 @@
   .brandmark{
     font-weight:800; letter-spacing:0.02em; font-size:1.35rem; color:#fff;
   }
-  .sidebar{background:var(--ink);}
+  .topbar{background:var(--ink);}
   .navitem{color:#B9C3D6; transition:background .15s,color .15s;}
   .navitem:hover{background:var(--ink-soft); color:#fff;}
   .navitem.active{background:var(--steel); color:#fff;}
@@ -66,10 +66,10 @@
   .link-btn:hover{text-decoration:underline;}
 </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen flex flex-col">
 
 <!-- ================= LOGIN VIEW ================= -->
-<div id="view-login" class="min-h-screen flex items-center justify-center px-4">
+<div id="view-login" class="flex-1 flex items-center justify-center px-4">
   <div class="w-full max-w-sm">
     <div class="text-center mb-8">
       <div class="inline-block px-4 py-2 rounded" style="background:var(--ink);">
@@ -93,26 +93,36 @@
 </div>
 
 <!-- ================= APP VIEW ================= -->
-<div id="view-app" class="hidden min-h-screen flex">
-  <aside class="sidebar w-60 shrink-0 flex flex-col">
-    <div class="px-5 py-5 border-b" style="border-color:#26324A;">
-      <span class="brandmark">HOSIDEN</span>
-      <div class="text-xs mt-0.5" style="color:#8894AC;">Order Tracking</div>
+<div id="view-app" class="hidden flex-col min-h-screen">
+  
+  <!-- TOP HEADER MENU -->
+  <header class="topbar shrink-0 flex flex-wrap items-center justify-between px-6 py-3 gap-4 shadow-sm z-10">
+    <div class="flex flex-wrap items-center gap-6 md:gap-10">
+      <div class="flex flex-col">
+        <span class="brandmark">HOSIDEN</span>
+        <div class="text-[10.5px] font-semibold uppercase tracking-wider mt-0.5" style="color:#8894AC;">Order Tracking</div>
+      </div>
+      <!-- MAIN NAV -->
+      <nav id="main-nav" class="flex flex-wrap items-center gap-1.5"></nav>
     </div>
-    <nav id="sidebar-nav" class="flex-1 px-3 py-4 space-y-1"></nav>
-    <div class="px-4 py-4 border-t" style="border-color:#26324A;">
-      <div id="sidebar-user" class="text-sm text-white font-medium"></div>
-      <div id="sidebar-role" class="text-xs mb-3" style="color:#8894AC;"></div>
-      <button id="logout-btn" class="text-xs navitem px-2 py-1.5 rounded w-full text-left">↩ Đăng xuất</button>
-    </div>
-  </aside>
 
-  <main class="flex-1 min-w-0">
-    <header class="bg-white border-b px-6 py-4 flex items-center justify-between" style="border-color:var(--line);">
+    <!-- USER INFO & LOGOUT -->
+    <div class="flex items-center gap-4">
+      <div class="text-right hidden sm:block">
+        <div id="nav-user" class="text-sm text-white font-medium"></div>
+        <div id="nav-role" class="text-[11px]" style="color:#8894AC;"></div>
+      </div>
+      <button id="logout-btn" class="text-xs navitem px-3 py-2 rounded border border-[#2A3A57] font-medium">↩ Đăng xuất</button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 min-w-0 bg-slate-50 flex flex-col">
+    <header class="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm shrink-0" style="border-color:var(--line);">
       <h1 id="page-title" class="text-lg font-bold"></h1>
       <div id="page-actions" class="flex items-center gap-2"></div>
     </header>
-    <div id="page-content" class="p-6"></div>
+    <div id="page-content" class="p-6 flex-1 overflow-y-auto"></div>
   </main>
 </div>
 
@@ -225,7 +235,9 @@ auth.onAuthStateChanged(async (user) => {
   if(!user){
     currentUser = null; currentProfile = null;
     document.getElementById('view-app').classList.add('hidden');
+    document.getElementById('view-app').classList.remove('flex');
     document.getElementById('view-login').classList.remove('hidden');
+    document.getElementById('view-login').classList.add('flex');
     return;
   }
   currentUser = user;
@@ -244,7 +256,9 @@ auth.onAuthStateChanged(async (user) => {
     }
     currentProfile = profile;
     document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-login').classList.remove('flex');
     document.getElementById('view-app').classList.remove('hidden');
+    document.getElementById('view-app').classList.add('flex');
     initAppShell();
   }catch(err){
     console.error(err);
@@ -259,19 +273,22 @@ function detachListeners(){
 }
 
 /* ========================================================================
-   APP SHELL / NAVIGATION
+   APP SHELL / NAVIGATION (UPDATED FOR TOP NAV)
    ======================================================================== */
 function initAppShell(){
-  document.getElementById('sidebar-user').textContent = currentProfile.role === 'admin' ? 'Admin' : currentProfile.supplierName;
-  document.getElementById('sidebar-role').textContent = currentProfile.role === 'admin' ? 'Quản trị viên' : 'Nhà cung cấp · ' + currentProfile.username;
+  document.getElementById('nav-user').textContent = currentProfile.role === 'admin' ? 'Quản trị viên' : currentProfile.supplierName;
+  document.getElementById('nav-role').textContent = currentProfile.role === 'admin' ? 'Quyền: Admin' : 'Nhà cung cấp · ' + currentProfile.username;
 
-  const nav = document.getElementById('sidebar-nav');
+  const nav = document.getElementById('main-nav');
   const pages = currentProfile.role === 'admin'
     ? [['orders','📦 Đơn hàng'],['suppliers','🏭 Nhà cung cấp'],['reports','📊 Báo cáo']]
     : [['orders','📦 Đơn hàng của tôi'], ['reports','📊 Báo cáo vật tư']];
+  
+  // Render ngang cho button
   nav.innerHTML = pages.map(([key,label]) =>
-    `<button data-page="${key}" class="navitem w-full text-left px-3 py-2 rounded-md text-sm font-medium">${label}</button>`
+    `<button data-page="${key}" class="navitem px-3.5 py-2 rounded-md text-[13px] font-semibold">${label}</button>`
   ).join('');
+  
   nav.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => setPage(btn.dataset.page)));
 
   attachOrdersListener();
@@ -282,7 +299,7 @@ function initAppShell(){
 
 function setPage(page){
   currentPage = page;
-  document.querySelectorAll('#sidebar-nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  document.querySelectorAll('#main-nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   if(page === 'orders') renderOrdersPage();
   else if(page === 'suppliers') renderSuppliersPage();
   else if(page === 'reports') renderReportsPage();
@@ -619,7 +636,7 @@ function openCreateOrderModal(prefill = null){
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Mã vật tư</label>
-          <input type="text" id="co-code" class="w-full mono" placeholder="Có thể để nhà cung cấp bổ sung sau" value="${esc(prefill?.materialCode || '')}">
+          <input type="text" id="co-code" class="w-full mono" placeholder="Có thể để nhà cung cấp bổ tương sau" value="${esc(prefill?.materialCode || '')}">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Số lượng *</label>
