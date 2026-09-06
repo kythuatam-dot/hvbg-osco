@@ -136,6 +136,13 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
+
+// Không lưu đăng nhập vĩnh viễn: phiên đăng nhập chỉ tồn tại trong lúc
+// trình duyệt/tab đang mở. Đóng trình duyệt lại (hoặc tắt máy) thì lần
+// sau mở link sẽ phải đăng nhập lại từ đầu.
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(err => {
+  console.error('Không thể đặt chế độ lưu đăng nhập:', err);
+});
 const EMAIL_SUFFIX = "@hosiden.local";
 const ADMIN_USERNAME = "admin";
 const ADMIN_DEFAULT_PW = "hvbg2025";
@@ -329,6 +336,16 @@ function quarterOf(m){
 }
 function yearOf(m){ return m.split('-')[0]; }
 
+// Ngày đặt hàng: "orderDate" (YYYY-MM-DD) là field mới; các đơn cũ chỉ có
+// "month" (YYYY-MM) vẫn hiển thị được nhờ 2 helper dưới đây.
+function getOrderDate(o){ return o.orderDate || (o.month ? o.month + '-01' : ''); }
+function getMonthKey(o){ const d = getOrderDate(o); return d ? d.slice(0,7) : ''; }
+function fmtDate(d){ // "2026-09-05" -> "05/09/2026"
+  if(!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
 function totalDelivered(order){
   if(!order.deliveries) return 0;
   return Object.values(order.deliveries).reduce((s,d) => s + (Number(d.qty)||0), 0);
@@ -347,6 +364,31 @@ function ordersArray(){
   return Object.entries(orders).map(([id,o]) => ({id, ...o}));
 }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+// Nén ảnh về kích thước nhỏ (tối đa 800px cạnh dài, chất lượng ~65%) rồi
+// trả về dạng base64 (data URL) để lưu thẳng vào Realtime Database — không
+// cần Firebase Storage (tránh phải nâng cấp gói trả phí).
+function compressImageToDataUrl(file, maxDim = 800, quality = 0.65){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Không đọc được file ảnh.'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('File không phải là ảnh hợp lệ.'));
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > height && width > maxDim){ height = Math.round(height * maxDim / width); width = maxDim; }
+        else if(height > maxDim){ width = Math.round(width * maxDim / height); height = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 /* ========================================================================
    MODAL UTIL
@@ -394,7 +436,7 @@ function renderOrdersPage(){
     <div class="panel rounded-lg p-3 mb-4 flex flex-wrap gap-2 items-end">
       <div>
         <label class="block text-xs text-slate-500 mb-1">Tháng</label>
-        <input type="month" id="f-month" value="${ordersFilter.month}" class="text-sm">
+        <input type="month" id="f-month" value="${ordersFilter.month}" class="text-sm" title="Lọc theo tháng của ngày đặt hàng">
       </div>
       ${currentProfile.role === 'admin' ? `
       <div>
@@ -423,8 +465,9 @@ function renderOrdersPage(){
     <div class="panel rounded-lg overflow-x-auto">
       <table class="data w-full">
         <thead><tr>
-          <th>Tháng</th>
+          <th>Ngày đặt</th>
           ${currentProfile.role === 'admin' ? '<th>Nhà cung cấp</th>' : ''}
+          <th>Ảnh</th>
           <th>Tên vật tư</th>
           <th>Mã vật tư</th>
           <th>Mã báo giá</th>
@@ -435,7 +478,7 @@ function renderOrdersPage(){
           <th></th>
         </tr></thead>
         <tbody>
-          ${list.length ? list.map(rowOrderHtml).join('') : `<tr><td colspan="10" class="text-center text-slate-400 py-8">Chưa có đơn hàng nào phù hợp.</td></tr>`}
+          ${list.length ? list.map(rowOrderHtml).join('') : `<tr><td colspan="12" class="text-center text-slate-400 py-8">Chưa có đơn hàng nào phù hợp.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -452,6 +495,11 @@ function renderOrdersPage(){
   list.forEach(o => {
     const openBtn = document.getElementById('open-'+o.id);
     if(openBtn) openBtn.addEventListener('click', () => openOrderDetailModal(o.id));
+    const reorderBtn = document.getElementById('reorder-'+o.id);
+    if(reorderBtn) reorderBtn.addEventListener('click', () => openCreateOrderModal({
+      supplierUid: o.supplierUid, materialName: o.materialName, materialCode: o.materialCode,
+      quantity: o.quantity, imageUrl: o.imageUrl || ''
+    }));
   });
 }
 
@@ -470,7 +518,7 @@ function computeQuickStats(list){
 
 function filteredOrders(){
   return ordersArray().filter(o => {
-    if(ordersFilter.month && o.month !== ordersFilter.month) return false;
+    if(ordersFilter.month && getMonthKey(o) !== ordersFilter.month) return false;
     if(ordersFilter.supplierUid && o.supplierUid !== ordersFilter.supplierUid) return false;
     if(ordersFilter.status && orderStatus(o).key !== ordersFilter.status) return false;
     if(ordersFilter.q){
@@ -485,8 +533,9 @@ function filteredOrders(){
 function rowOrderHtml(o){
   const st = orderStatus(o);
   return `<tr>
-    <td>${fmtMonth(o.month)}</td>
+    <td>${fmtDate(getOrderDate(o))}</td>
     ${currentProfile.role === 'admin' ? `<td>${esc(o.supplierName)}</td>` : ''}
+    <td>${o.imageUrl ? `<a href="${o.imageUrl}" target="_blank" rel="noopener"><img src="${o.imageUrl}" class="w-9 h-9 object-cover rounded border" style="border-color:var(--line)"></a>` : '<span class="text-slate-300">—</span>'}</td>
     <td class="font-medium">${esc(o.materialName)}</td>
     <td class="mono">${esc(o.materialCode) || '<span class="text-slate-300">—</span>'}</td>
     <td class="mono">${esc(o.quoteCode) || '<span class="text-slate-300">—</span>'}</td>
@@ -494,20 +543,25 @@ function rowOrderHtml(o){
     <td class="text-right">${o.quantity}</td>
     <td class="text-right">${totalDelivered(o)}</td>
     <td><span class="badge ${st.cls}">${st.label}</span></td>
-    <td><span id="open-${o.id}" class="link-btn text-xs">Chi tiết</span></td>
+    <td class="whitespace-nowrap">
+      <span id="open-${o.id}" class="link-btn text-xs">Chi tiết</span>
+      ${currentProfile.role === 'admin' ? ` · <span id="reorder-${o.id}" class="link-btn text-xs">🔁 Đặt lại</span>` : ''}
+    </td>
   </tr>`;
 }
 
 /* ---- Create order (admin) ---- */
-function openCreateOrderModal(){
-  const supplierOptions = Object.entries(suppliers).map(([uid,s]) => `<option value="${uid}">${esc(s.supplierName)}</option>`).join('');
+// prefill (optional): dùng khi bấm "Đặt lại" từ một đơn có sẵn — giữ nguyên
+// nhà cung cấp / tên vật tư / mã vật tư / ảnh, chỉ cần sửa ngày & số lượng.
+function openCreateOrderModal(prefill = null){
+  const supplierOptions = Object.entries(suppliers).map(([uid,s]) => `<option value="${uid}" ${prefill && prefill.supplierUid===uid ? 'selected':''}>${esc(s.supplierName)}</option>`).join('');
   openModal(`
     <div class="p-5">
-      <h2 class="text-base font-bold mb-4">Tạo đơn hàng mới</h2>
+      <h2 class="text-base font-bold mb-4">${prefill ? 'Đặt hàng lại' : 'Tạo đơn hàng mới'}</h2>
       <form id="create-order-form" class="space-y-3">
         <div>
-          <label class="block text-xs font-semibold text-slate-500 mb-1">Tháng *</label>
-          <input type="month" id="co-month" required class="w-full" value="${new Date().toISOString().slice(0,7)}">
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Ngày đặt hàng *</label>
+          <input type="date" id="co-date" required class="w-full" value="${todayISO()}">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Nhà cung cấp *</label>
@@ -519,42 +573,69 @@ function openCreateOrderModal(){
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Tên vật tư *</label>
-          <input type="text" id="co-name" required class="w-full" placeholder="vd: Connector 2.0mm">
+          <input type="text" id="co-name" required class="w-full" placeholder="vd: Connector 2.0mm" value="${esc(prefill?.materialName || '')}">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Mã vật tư</label>
-          <input type="text" id="co-code" class="w-full mono" placeholder="Có thể để nhà cung cấp bổ sung sau">
+          <input type="text" id="co-code" class="w-full mono" placeholder="Có thể để nhà cung cấp bổ sung sau" value="${esc(prefill?.materialCode || '')}">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Số lượng *</label>
-          <input type="number" id="co-qty" required min="1" step="1" class="w-full" placeholder="0">
+          <input type="number" id="co-qty" required min="1" step="1" class="w-full" placeholder="0" value="${prefill?.quantity ?? ''}">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Hình ảnh vật tư</label>
+          <input type="file" id="co-image" accept="image/*" class="w-full text-sm">
+          <div id="co-image-preview" class="mt-2">
+            ${prefill?.imageUrl ? `<img src="${prefill.imageUrl}" class="w-20 h-20 object-cover rounded border" style="border-color:var(--line)">` : ''}
+          </div>
         </div>
         <div id="co-error" class="hidden text-sm rounded px-3 py-2" style="background:var(--red-bg); color:var(--red);"></div>
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" onclick="closeModal()" class="btn-outline rounded-md px-4 py-2 text-sm">Huỷ</button>
-          <button type="submit" class="btn-primary rounded-md px-4 py-2 text-sm font-semibold">Tạo đơn</button>
+          <button type="submit" id="co-submit" class="btn-primary rounded-md px-4 py-2 text-sm font-semibold">${prefill ? 'Tạo đơn' : 'Tạo đơn'}</button>
         </div>
       </form>
     </div>
   `);
+
+  let carriedImageUrl = prefill?.imageUrl || '';
+  document.getElementById('co-image').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    document.getElementById('co-image-preview').innerHTML = `<span class="text-xs text-slate-400">Đang xử lý ảnh...</span>`;
+    try{
+      carriedImageUrl = await compressImageToDataUrl(file);
+      document.getElementById('co-image-preview').innerHTML = `<img src="${carriedImageUrl}" class="w-20 h-20 object-cover rounded border" style="border-color:var(--line)">`;
+    }catch(err){
+      showFormError('co-error', 'Không xử lý được ảnh: ' + err.message);
+    }
+  });
+
   document.getElementById('create-order-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const supplierUid = document.getElementById('co-supplier').value;
     if(!supplierUid){ showFormError('co-error','Vui lòng chọn nhà cung cấp.'); return; }
-    const order = {
-      month: document.getElementById('co-month').value,
-      supplierUid,
-      supplierName: suppliers[supplierUid].supplierName,
-      materialName: document.getElementById('co-name').value.trim(),
-      materialCode: document.getElementById('co-code').value.trim(),
-      quantity: Number(document.getElementById('co-qty').value),
-      quoteCode: '', poCode: '',
-      createdAt: Date.now(), createdBy: currentUser.uid
-    };
+    const submitBtn = document.getElementById('co-submit');
+    submitBtn.disabled = true; submitBtn.textContent = 'Đang lưu...';
     try{
+      const order = {
+        orderDate: document.getElementById('co-date').value,
+        supplierUid,
+        supplierName: suppliers[supplierUid].supplierName,
+        materialName: document.getElementById('co-name').value.trim(),
+        materialCode: document.getElementById('co-code').value.trim(),
+        quantity: Number(document.getElementById('co-qty').value),
+        imageUrl: carriedImageUrl || '',
+        quoteCode: '', poCode: '',
+        createdAt: Date.now(), createdBy: currentUser.uid
+      };
       await db.ref('orders').push(order);
       closeModal();
-    }catch(err){ showFormError('co-error', 'Lỗi: ' + err.message); }
+    }catch(err){
+      showFormError('co-error', 'Lỗi: ' + err.message);
+      submitBtn.disabled = false; submitBtn.textContent = 'Tạo đơn';
+    }
   });
 }
 function showFormError(id, msg){
@@ -577,12 +658,14 @@ function openOrderDetailModal(orderId){
       <div class="flex items-start justify-between mb-4">
         <div>
           <h2 class="text-base font-bold">${esc(o.materialName)}</h2>
-          <div class="text-xs text-slate-500 mt-0.5">${fmtMonth(o.month)} · ${esc(o.supplierName)}</div>
+          <div class="text-xs text-slate-500 mt-0.5">${fmtDate(getOrderDate(o))} · ${esc(o.supplierName)}</div>
         </div>
         <span class="badge ${st.cls}">${st.label}</span>
       </div>
 
       <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Ngày đặt hàng</label>
+          <input type="date" id="od-date" class="w-full" value="${getOrderDate(o)}" ${isAdmin?'':'disabled'}></div>
         <div><label class="block text-xs font-semibold text-slate-500 mb-1">Mã vật tư</label>
           <input type="text" id="od-code" class="w-full mono" value="${esc(o.materialCode)||''}" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
         <div><label class="block text-xs font-semibold text-slate-500 mb-1">Số lượng đặt</label>
@@ -592,6 +675,15 @@ function openOrderDetailModal(orderId){
         <div><label class="block text-xs font-semibold text-slate-500 mb-1">Mã PO</label>
           <input type="text" id="od-po" class="w-full mono" value="${esc(o.poCode)||''}" placeholder="Nhà cung cấp nhập" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
       </div>
+
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Hình ảnh vật tư</label>
+        <div id="od-image-preview" class="mb-2">
+          ${o.imageUrl ? `<a href="${o.imageUrl}" target="_blank" rel="noopener"><img src="${o.imageUrl}" class="w-20 h-20 object-cover rounded border" style="border-color:var(--line)"></a>` : '<span class="text-xs text-slate-400">Chưa có ảnh</span>'}
+        </div>
+        ${isAdmin || o.supplierUid===currentUser.uid ? `<input type="file" id="od-image" accept="image/*" class="text-sm">` : ''}
+      </div>
+
       <div id="od-error" class="hidden text-sm rounded px-3 py-2 mb-3" style="background:var(--red-bg); color:var(--red);"></div>
       <div class="flex justify-end gap-2 mb-5">
         ${isAdmin ? `<button id="od-delete" class="btn-danger rounded-md px-3 py-1.5 text-xs font-semibold">Xoá đơn</button>` : ''}
@@ -633,16 +725,31 @@ function openOrderDetailModal(orderId){
   document.getElementById('od-save').addEventListener('click', async () => {
     const newQty = isAdmin ? Number(document.getElementById('od-qty').value) : o.quantity;
     if(newQty < delivered){ showFormError('od-error', 'Số lượng đặt không thể nhỏ hơn số lượng đã giao.'); return; }
+    const saveBtn = document.getElementById('od-save');
+    saveBtn.disabled = true; saveBtn.textContent = 'Đang lưu...';
     const updates = {
       materialCode: document.getElementById('od-code').value.trim(),
       quoteCode: document.getElementById('od-quote').value.trim(),
       poCode: document.getElementById('od-po').value.trim(),
       quantity: newQty
     };
+    if(isAdmin){
+      const newDate = document.getElementById('od-date').value;
+      if(newDate) updates.orderDate = newDate;
+    }
     try{
+      const imgInput = document.getElementById('od-image');
+      const file = imgInput && imgInput.files[0];
+      if(file){
+        saveBtn.textContent = 'Đang xử lý ảnh...';
+        updates.imageUrl = await compressImageToDataUrl(file);
+      }
       await db.ref('orders/'+orderId).update(updates);
       closeModal();
-    }catch(err){ showFormError('od-error','Lỗi: '+err.message); }
+    }catch(err){
+      showFormError('od-error','Lỗi: '+err.message);
+      saveBtn.disabled = false; saveBtn.textContent = 'Lưu thay đổi';
+    }
   });
 
   if(isAdmin){
@@ -824,16 +931,17 @@ function renderReportsPage(){
 }
 
 function periodKeyAndLabel(o, period){
-  if(period === 'month') return [o.month, fmtMonth(o.month)];
-  if(period === 'quarter') return [yearOf(o.month)+'-Q'+quarterOf(o.month), 'Quý '+quarterOf(o.month)+'/'+yearOf(o.month)];
-  return [yearOf(o.month), 'Năm '+yearOf(o.month)];
+  const mk = getMonthKey(o);
+  if(period === 'month') return [mk, fmtMonth(mk)];
+  if(period === 'quarter') return [yearOf(mk)+'-Q'+quarterOf(mk), 'Quý '+quarterOf(mk)+'/'+yearOf(mk)];
+  return [yearOf(mk), 'Năm '+yearOf(mk)];
 }
 
 function buildReportGroups(period){
   const map = {}; // key(period+supplier) -> row
   const totals = {count:0, qty:0, delivered:0};
   ordersArray().forEach(o => {
-    if(!o.month) return;
+    if(!getMonthKey(o)) return;
     const [pKey, pLabel] = periodKeyAndLabel(o, period);
     const key = pKey + '|' + o.supplierUid;
     if(!map[key]) map[key] = {periodKey:pKey, periodLabel:pLabel, supplierName:o.supplierName, count:0, qty:0, delivered:0};
@@ -874,7 +982,7 @@ function drawReportChart(groups){
    ======================================================================== */
 function exportOrdersToExcel(list, filenameBase){
   const rows = list.map(o => ({
-    'Tháng': fmtMonth(o.month),
+    'Ngày đặt hàng': fmtDate(getOrderDate(o)),
     'Nhà cung cấp': o.supplierName,
     'Tên vật tư': o.materialName,
     'Mã vật tư': o.materialCode || '',
@@ -883,6 +991,7 @@ function exportOrdersToExcel(list, filenameBase){
     'Số lượng đặt': o.quantity,
     'Số lượng đã giao': totalDelivered(o),
     'Trạng thái': orderStatus(o).label,
+    'Hình ảnh': o.imageUrl || '',
     'Chi tiết các lần giao': o.deliveries ? Object.values(o.deliveries).map(d => `${d.date}: ${d.qty}${d.note ? ' ('+d.note+')' : ''}`).join(' | ') : ''
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
