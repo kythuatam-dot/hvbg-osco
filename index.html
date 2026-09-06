@@ -345,6 +345,11 @@ function fmtDate(d){ // "2026-09-05" -> "05/09/2026"
   const [y,m,day] = d.split('-');
   return `${day}/${m}/${y}`;
 }
+function totalPriceOf(o){ return (Number(o.quantity)||0) * (Number(o.unitPrice)||0); }
+function fmtCurrency(n){
+  if(n === null || n === undefined || n === '') return '—';
+  return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 4 });
+}
 
 function totalDelivered(order){
   if(!order.deliveries) return 0;
@@ -519,11 +524,13 @@ function renderOrdersPage(){
           <th>Mã PO</th>
           <th class="text-right">SL đặt</th>
           <th class="text-right">SL đã giao</th>
+          <th class="text-right">Đơn giá</th>
+          <th class="text-right">Thành tiền</th>
           <th>Trạng thái</th>
           <th></th>
         </tr></thead>
         <tbody>
-          ${list.length ? list.map(rowOrderHtml).join('') : `<tr><td colspan="12" class="text-center text-slate-400 py-8">Chưa có đơn hàng nào phù hợp.</td></tr>`}
+          ${list.length ? list.map(rowOrderHtml).join('') : `<tr><td colspan="14" class="text-center text-slate-400 py-8">Chưa có đơn hàng nào phù hợp.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -590,6 +597,8 @@ function rowOrderHtml(o){
     <td class="mono">${esc(o.poCode) || '<span class="text-slate-300">—</span>'}</td>
     <td class="text-right">${o.quantity}</td>
     <td class="text-right">${totalDelivered(o)}</td>
+    <td class="text-right">${fmtCurrency(o.unitPrice)}</td>
+    <td class="text-right font-medium">${o.unitPrice ? fmtCurrency(totalPriceOf(o)) : '—'}</td>
     <td><span class="badge ${st.cls}">${st.label}</span></td>
     <td class="whitespace-nowrap">
       <span id="open-${o.id}" class="link-btn text-xs">Chi tiết</span>
@@ -722,6 +731,10 @@ function openOrderDetailModal(orderId){
           <input type="text" id="od-quote" class="w-full mono" value="${esc(o.quoteCode)||''}" placeholder="Nhà cung cấp nhập" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
         <div><label class="block text-xs font-semibold text-slate-500 mb-1">Mã PO</label>
           <input type="text" id="od-po" class="w-full mono" value="${esc(o.poCode)||''}" placeholder="Nhà cung cấp nhập" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Đơn giá (1 vật tư)</label>
+          <input type="number" id="od-price" class="w-full" value="${o.unitPrice ?? ''}" min="0" step="any" placeholder="Nhà cung cấp nhập" ${isAdmin||o.supplierUid===currentUser.uid?'':'disabled'}></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Giá tổng (tự tính)</label>
+          <input type="text" id="od-total" class="w-full mono font-semibold" value="${o.unitPrice ? fmtCurrency(totalPriceOf(o)) : '—'}" disabled style="background:#F5F6F8;"></div>
       </div>
 
       <div class="mb-4">
@@ -773,6 +786,14 @@ function openOrderDetailModal(orderId){
   const odThumb = document.getElementById('od-image-thumb');
   if(odThumb) odThumb.addEventListener('click', () => openImageViewer(o.imageUrl));
 
+  function recalcTotal(){
+    const price = Number(document.getElementById('od-price').value) || 0;
+    const qty = Number(document.getElementById('od-qty').value) || 0;
+    document.getElementById('od-total').value = price ? fmtCurrency(price * qty) : '—';
+  }
+  document.getElementById('od-price').addEventListener('input', recalcTotal);
+  document.getElementById('od-qty').addEventListener('input', recalcTotal);
+
   document.getElementById('od-save').addEventListener('click', async () => {
     const newQty = isAdmin ? Number(document.getElementById('od-qty').value) : o.quantity;
     if(newQty < delivered){ showFormError('od-error', 'Số lượng đặt không thể nhỏ hơn số lượng đã giao.'); return; }
@@ -782,6 +803,7 @@ function openOrderDetailModal(orderId){
       materialCode: document.getElementById('od-code').value.trim(),
       quoteCode: document.getElementById('od-quote').value.trim(),
       poCode: document.getElementById('od-po').value.trim(),
+      unitPrice: Number(document.getElementById('od-price').value) || null,
       quantity: newQty
     };
     if(isAdmin){
@@ -952,7 +974,7 @@ function renderReportsPage(){
     <div class="panel rounded-lg overflow-x-auto">
       <table class="data w-full">
         <thead><tr>
-          <th>Kỳ</th><th>Nhà cung cấp</th><th class="text-right">Số đơn</th><th class="text-right">SL đặt</th><th class="text-right">SL đã giao</th><th class="text-right">Tỉ lệ hoàn thành</th>
+          <th>Kỳ</th><th>Nhà cung cấp</th><th class="text-right">Số đơn</th><th class="text-right">SL đặt</th><th class="text-right">SL đã giao</th><th class="text-right">Tỉ lệ hoàn thành</th><th class="text-right">Tổng giá trị</th>
         </tr></thead>
         <tbody>
           ${groups.rows.length ? groups.rows.map(r => `<tr>
@@ -962,7 +984,8 @@ function renderReportsPage(){
             <td class="text-right">${r.qty}</td>
             <td class="text-right">${r.delivered}</td>
             <td class="text-right">${r.qty ? Math.round(r.delivered/r.qty*100) : 0}%</td>
-          </tr>`).join('') : `<tr><td colspan="6" class="text-center text-slate-400 py-8">Chưa có dữ liệu.</td></tr>`}
+            <td class="text-right font-medium">${r.value ? fmtCurrency(r.value) : '—'}</td>
+          </tr>`).join('') : `<tr><td colspan="7" class="text-center text-slate-400 py-8">Chưa có dữ liệu.</td></tr>`}
         </tbody>
         ${groups.rows.length ? `<tfoot><tr class="font-bold">
           <td colspan="2">Tổng cộng</td>
@@ -970,6 +993,7 @@ function renderReportsPage(){
           <td class="text-right">${groups.totals.qty}</td>
           <td class="text-right">${groups.totals.delivered}</td>
           <td class="text-right">${groups.totals.qty ? Math.round(groups.totals.delivered/groups.totals.qty*100) : 0}%</td>
+          <td class="text-right">${groups.totals.value ? fmtCurrency(groups.totals.value) : '—'}</td>
         </tr></tfoot>` : ''}
       </table>
     </div>
@@ -990,16 +1014,17 @@ function periodKeyAndLabel(o, period){
 
 function buildReportGroups(period){
   const map = {}; // key(period+supplier) -> row
-  const totals = {count:0, qty:0, delivered:0};
+  const totals = {count:0, qty:0, delivered:0, value:0};
   ordersArray().forEach(o => {
     if(!getMonthKey(o)) return;
     const [pKey, pLabel] = periodKeyAndLabel(o, period);
     const key = pKey + '|' + o.supplierUid;
-    if(!map[key]) map[key] = {periodKey:pKey, periodLabel:pLabel, supplierName:o.supplierName, count:0, qty:0, delivered:0};
+    if(!map[key]) map[key] = {periodKey:pKey, periodLabel:pLabel, supplierName:o.supplierName, count:0, qty:0, delivered:0, value:0};
     map[key].count++;
     map[key].qty += Number(o.quantity)||0;
     map[key].delivered += totalDelivered(o);
-    totals.count++; totals.qty += Number(o.quantity)||0; totals.delivered += totalDelivered(o);
+    map[key].value += totalPriceOf(o);
+    totals.count++; totals.qty += Number(o.quantity)||0; totals.delivered += totalDelivered(o); totals.value += totalPriceOf(o);
   });
   const rows = Object.values(map).sort((a,b) => a.periodKey.localeCompare(b.periodKey) || a.supplierName.localeCompare(b.supplierName));
   return {rows, totals};
@@ -1041,6 +1066,8 @@ function exportOrdersToExcel(list, filenameBase){
     'Mã PO': o.poCode || '',
     'Số lượng đặt': o.quantity,
     'Số lượng đã giao': totalDelivered(o),
+    'Đơn giá': o.unitPrice || '',
+    'Thành tiền': o.unitPrice ? totalPriceOf(o) : '',
     'Trạng thái': orderStatus(o).label,
     'Hình ảnh': o.imageUrl || '',
     'Chi tiết các lần giao': o.deliveries ? Object.values(o.deliveries).map(d => `${d.date}: ${d.qty}${d.note ? ' ('+d.note+')' : ''}`).join(' | ') : ''
@@ -1055,7 +1082,8 @@ function exportReportToExcel(groups){
   const rows = groups.rows.map(r => ({
     'Kỳ': r.periodLabel, 'Nhà cung cấp': r.supplierName, 'Số đơn': r.count,
     'SL đặt': r.qty, 'SL đã giao': r.delivered,
-    'Tỉ lệ hoàn thành (%)': r.qty ? Math.round(r.delivered/r.qty*100) : 0
+    'Tỉ lệ hoàn thành (%)': r.qty ? Math.round(r.delivered/r.qty*100) : 0,
+    'Tổng giá trị': r.value || 0
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
